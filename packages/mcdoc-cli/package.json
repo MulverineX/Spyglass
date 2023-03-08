@@ -1,26 +1,27 @@
 {
-  "name": "@spyglassmc/language-server",
+  "name": "@spyglassmc/mcdoc-cli",
   "version": "0.1.0-PLACEHOLDER",
   "type": "module",
-  "main": "lib/server.js",
-  "types": "lib/server.d.ts",
-  "author": "SPGoding",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "author": "Misode",
   "license": "MIT",
   "directories": {
-    "man": "man",
-    "test": "test"
+    "test": "test/"
   },
   "bin": {
-    "spyglassmc-language-server": "./bin/server.js"
+    "mcdoc": "./lib/index.js"
   },
   "scripts": {
     "release": "npm publish",
     "release:dry": "npm publish --dry-run"
   },
   "dependencies": {
-    "env-paths": "^2.2.1",
-    "vscode-languageserver": "^7.0.0",
-    "vscode-languageserver-textdocument": "^1.0.1"
+    "yargs": "17.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "18.11.17",
+    "@types/yargs": "17.0.17"
   },
   "publishConfig": {
     "access": "public"

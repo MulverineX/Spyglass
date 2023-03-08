@@ -80,7 +80,7 @@ export async function getMcmetaSummary(
 				if (overrideConfig.replace) {
 					return override
 				} else {
-					return core.merge(currentValue, override)
+					return core.merge(currentValue as any, override)
 				}
 			} catch (e) {
 				logger.error(

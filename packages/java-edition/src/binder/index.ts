@@ -1,19 +1,20 @@
 import type {
 	ContextBase,
 	FileCategory,
-	RegistryCategory,
 	RootUriString,
 	TagFileCategory,
+	TaggableResourceLocationCategory,
 	UriBinder,
 	UriBinderContext,
 } from '@spyglassmc/core'
-import { fileUtil, RegistryCategories } from '@spyglassmc/core'
+import { fileUtil, TaggableResourceLocationCategories } from '@spyglassmc/core'
 import { ReleaseVersion } from '../dependency/index.js'
 
 export const Categories = (() => {
-	const NonTaggableRegistries = new Set<RegistryCategory>([
+	const NonTaggableRegistries = new Set<TaggableResourceLocationCategory>([
 		'block',
 		'fluid',
+		'function',
 		'game_event',
 		'item', // They have the legacy `tags/${plural}` path.
 		'worldgen/block_placer_type',
@@ -90,6 +91,14 @@ export const Categories = (() => {
 			},
 		],
 		[
+			'worldgen/density_function',
+			{
+				category: 'worldgen/density_function',
+				extname: '.json',
+				since: '1.18',
+			},
+		],
+		[
 			'worldgen/noise',
 			{ category: 'worldgen/noise', extname: '.json', since: '1.18' },
 		],
@@ -111,7 +120,7 @@ export const Categories = (() => {
 		],
 	])
 
-	for (const registry of RegistryCategories) {
+	for (const registry of TaggableResourceLocationCategories) {
 		if (NonTaggableRegistries.has(registry)) {
 			continue
 		}
@@ -155,12 +164,12 @@ export function dissectUri(uri: string, ctx: ContextBase) {
 		if (!def || def.extname !== match[4]) {
 			continue
 		}
+		const loadedVersion = ctx.project['loadedVersion'] as
+			| ReleaseVersion
+			| undefined
 		if (
-			!matchVersion(
-				ctx.project['loadedVersion'] as ReleaseVersion,
-				def.since,
-				def.until,
-			)
+			!loadedVersion || // FIXME: check why this can be undefined sometimes
+			!matchVersion(loadedVersion, def.since, def.until)
 		) {
 			continue
 		}

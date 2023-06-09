@@ -210,7 +210,8 @@ export namespace FormatterContext {
 
 export interface ColorizerContext extends ProcessorWithRangeContext {}
 export interface ColorizerContextOptions
-	extends ProcessorWithRangeContextOptions {}
+	extends ProcessorWithRangeContextOptions
+{}
 export namespace ColorizerContext {
 	export function create(
 		project: ProjectData,
@@ -242,9 +243,11 @@ export namespace CompleterContext {
 }
 
 export interface SignatureHelpProviderContext
-	extends ProcessorWithOffsetContext {}
+	extends ProcessorWithOffsetContext
+{}
 export interface SignatureHelpProviderContextOptions
-	extends ProcessorWithOffsetContextOptions {}
+	extends ProcessorWithOffsetContextOptions
+{}
 export namespace SignatureHelpProviderContext {
 	export function create(
 		project: ProjectData,

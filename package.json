@@ -4,24 +4,18 @@
 	"version": "1.0.0",
 	"license": "MIT",
 	"scripts": {
-		"build": "npm run build:tsc && npm run build:locales && npm run build:playground && npm run build:vscode-extension",
-		"build:dev": "npm run build:tsc && npm run build:locales && npm run build:playground:dev && npm run build:vscode-extension:dev",
-		"build:tsc": "tsc -b packages",
-		"build:locales": "npm run build --workspace=packages/locales",
-		"build:playground": "npm run build --workspace=packages/playground",
-		"build:playground:dev": "npm run build:dev --workspace=packages/playground",
-		"build:vscode-extension": "npm run build --workspace=packages/vscode-extension",
-		"build:vscode-extension:dev": "npm run build:dev --workspace=packages/vscode-extension",
-		"watch": "tsc -b -w packages",
+		"build": "wireit",
+		"build:dev": "wireit",
+		"watch": "npm run build:dev --watch",
 		"clean": "tsc -b packages --clean",
-		"clean:full": "rm -rf packages/*/lib packages/*/out packages/*/dist packages/*/test-out packages/*/*.tsbuildinfo",
+		"clean:full": "rm -rf packages/*/lib packages/*/out packages/*/dist packages/*/test-out packages/*/*.tsbuildinfo .wireit packages/*/.wireit",
 		"commit": "gitmoji -c",
 		"docs:install": "cd docs && (bundle || true) && cd ..",
 		"docs:start": "cd docs && (bundle exec jekyll serve --incremental || true) && cd ..",
+		"fmt": "dprint fmt",
+		"fmt:check": "dprint check",
 		"lint": "eslint --cache --max-warnings=0 packages/*/{src,test}/**/*.{cts,mts,ts}",
 		"lint:fix": "eslint --cache --max-warnings=0 --fix packages/*/{src,test}/**/*.{cts,mts,ts}",
-		"prettier": "prettier --check packages/*/{src,test}/**/*.{cts,mts,ts}",
-		"prettier:fix": "prettier --write packages/*/{src,test}/**/*.{cts,mts,ts}",
 		"release": "ts-node scripts/release.ts",
 		"release:dry": "ts-node scripts/release.ts --dry-run",
 		"set-tsconfig-references": "ts-node scripts/set_tsconfig_references",
@@ -29,33 +23,59 @@
 		"test": "nyc mocha",
 		"test:local": "nyc mocha --config .mocharc.local.jsonc"
 	},
+	"wireit": {
+		"build": {
+			"dependencies": [
+				"./packages/playground:build",
+				"./packages/vscode-extension:build"
+			]
+		},
+		"build:dev": {
+			"dependencies": [
+				"./packages/playground:build:dev",
+				"./packages/vscode-extension:build:dev"
+			]
+		},
+		"build:packages": {
+			"$comment": "This script is used as a dependency by ./packages/playground:build and ./packages/vscode-extension:build",
+			"command": "tsc -b packages",
+			"dependencies": [
+				"./packages/locales:build"
+			],
+			"files": [
+				"packages/*/src/**/*.*",
+				"packages/*/test/**/*.*"
+			]
+		}
+	},
 	"devDependencies": {
-		"@types/benchmark": "^2.1.1",
-		"@types/mocha": "^9.1.1",
-		"@types/node": "^14.14.37",
+		"@types/benchmark": "^2.1.2",
+		"@types/mocha": "^10.0.1",
+		"@types/node": "^18.16.3",
 		"@types/snap-shot-core": "^10.2.0",
-		"@types/webpack": "^5.28.0",
-		"@typescript-eslint/eslint-plugin": "^5.30.5",
-		"@typescript-eslint/parser": "^5.30.5",
-		"all-contributors-cli": "^6.20.0",
+		"@types/webpack": "^5.28.1",
+		"@typescript-eslint/eslint-plugin": "^5.59.1",
+		"@typescript-eslint/parser": "^5.59.1",
+		"all-contributors-cli": "^6.25.0",
 		"benchmark": "^2.1.4",
 		"circular-dependency-plugin": "^5.2.2",
-		"eslint": "^8.19.0",
-		"eslint-config-prettier": "^8.5.0",
-		"gitmoji-cli": "^5.0.2",
-		"mocha": "^10.0.0",
+		"dprint": "^0.37.1",
+		"eslint": "^8.39.0",
+		"eslint-config-prettier": "^8.8.0",
+		"gitmoji-cli": "^8.1.1",
+		"mocha": "^10.2.0",
 		"node-loader": "^2.0.0",
 		"nyc": "^15.1.0",
-		"prettier": "^2.7.1",
 		"snap-shot-core": "^10.2.4",
-		"snap-shot-it": "^7.9.6",
-		"source-map-loader": "^4.0.0",
+		"snap-shot-it": "^7.9.10",
+		"source-map-loader": "^4.0.1",
 		"source-map-support": "^0.5.21",
-		"ts-loader": "^9.3.1",
-		"ts-node": "^10.8.2",
-		"typescript": "^4.7.4",
-		"webpack": "^5.73.0",
-		"webpack-cli": "^4.10.0"
+		"ts-loader": "^9.4.2",
+		"ts-node": "^10.9.1",
+		"typescript": "^5.0.4",
+		"webpack": "^5.81.0",
+		"webpack-cli": "^5.0.2",
+		"wireit": "^0.9.5"
 	},
 	"config": {
 		"snap-shot-it": {

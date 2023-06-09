@@ -155,11 +155,12 @@ export class FileServiceImpl implements FileService {
 		try {
 			let mappedUri = this.map.getKey(virtualUri)
 			if (mappedUri === undefined) {
-				mappedUri = `${
-					this.virtualUrisRoot
-				}${await this.externals.crypto.getSha1(virtualUri)}/${fileUtil.basename(
-					virtualUri,
-				)}`
+				mappedUri = `${this.virtualUrisRoot}${await this.externals.crypto
+					.getSha1(virtualUri)}/${
+					fileUtil.basename(
+						virtualUri,
+					)
+				}`
 				const buffer = await this.readFile(virtualUri)
 				await fileUtil.writeFile(this.externals, mappedUri, buffer, 0o444)
 				this.map.set(mappedUri, virtualUri)
@@ -330,9 +331,11 @@ export class ArchiveUriSupporter implements UriProtocolSupporter {
 	private static getUri(archiveUri: string): RootUriString
 	private static getUri(archiveUri: string, pathInArchive: string): string
 	private static getUri(archiveUri: string, pathInArchive = '') {
-		return `${ArchiveUriSupporter.Protocol}//${encodeURIComponent(
-			archiveUri,
-		)}/${pathInArchive.replace(/\\/g, '/')}`
+		return `${ArchiveUriSupporter.Protocol}${
+			encodeURIComponent(
+				archiveUri,
+			)
+		}?path=${encodeURIComponent(pathInArchive.replace(/\\/g, '/'))}`
 	}
 
 	/**
@@ -347,10 +350,13 @@ export class ArchiveUriSupporter implements UriProtocolSupporter {
 				`Expected protocol “${ArchiveUriSupporter.Protocol}” in “${uri}”`,
 			)
 		}
+		const path = uri.searchParams.get('path')
+		if (!path) {
+			throw new Error(`Missing path in archive uri “${uri.toString()}”`)
+		}
 		return {
-			archiveUri: decodeURIComponent(uri.hostname),
-			pathInArchive:
-				uri.pathname.charAt(0) === '/' ? uri.pathname.slice(1) : uri.pathname,
+			archiveUri: decodeURIComponent(uri.pathname),
+			pathInArchive: path.charAt(0) === '/' ? path.slice(1) : path,
 		}
 	}
 
@@ -367,7 +373,7 @@ export class ArchiveUriSupporter implements UriProtocolSupporter {
 				if (
 					uri.startsWith('file:') &&
 					ArchiveUriSupporter.SupportedArchiveExtnames.some((ext) =>
-						uri.endsWith(ext),
+						uri.endsWith(ext)
 					) &&
 					(await externals.fs.stat(uri)).isFile()
 				) {
@@ -387,8 +393,9 @@ export class ArchiveUriSupporter implements UriProtocolSupporter {
 					const files = await externals.archive.decompressBall(
 						await externals.fs.readFile(uri),
 						{
-							stripLevel:
-								typeof info?.startDepth === 'number' ? info.startDepth : 0,
+							stripLevel: typeof info?.startDepth === 'number'
+								? info.startDepth
+								: 0,
 						},
 					)
 					entries.set(
@@ -397,7 +404,10 @@ export class ArchiveUriSupporter implements UriProtocolSupporter {
 					)
 				}
 			} catch (e) {
-				logger.error(`[SpyglassUriSupporter#create] Bad dependency “${uri}”`, e)
+				logger.error(
+					`[SpyglassUriSupporter#create] Bad dependency “${uri}”`,
+					e,
+				)
 			}
 		}
 

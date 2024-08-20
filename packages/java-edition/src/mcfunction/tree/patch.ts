@@ -382,6 +382,7 @@ export function getPatch(release: ReleaseVersion): PartialRootTreeNode {
 					},
 				}
 				: {}),
+			// stopped here
 			loot: {
 				children: {
 					give: {
@@ -831,7 +832,7 @@ const AdvancementTargets: PartialTreeNode = Object.freeze({
  *                        @default {@link SymbolAccessType.Read}
  * @param children Optional patch for children after the NBT argument.
  */
-function getDataPatch(
+export function getDataPatch(
 	vaultKey: 'source' | 'target',
 	nbtKey: 'nbt' | 'path' | 'sourcePath' | 'targetPath' | 'value',
 	{
@@ -842,10 +843,10 @@ function getDataPatch(
 		vaultAccessType = SymbolAccessType.Read,
 	}: {
 		children?:
-			| ((
-				type: 'block' | 'entity' | 'storage',
-			) => PartialTreeNode['children'])
-			| undefined
+		| ((
+			type: 'block' | 'entity' | 'storage',
+		) => PartialTreeNode['children'])
+		| undefined
 		isPredicate?: boolean | undefined
 		isMerge?: boolean | undefined
 		nbtAccessType?: SymbolAccessType | undefined
@@ -917,7 +918,7 @@ function getDataPatch(
 	})
 }
 
-const getDataModifySource = (
+export const getDataModifySource = (
 	type: 'block' | 'entity' | 'storage',
 	{
 		isMerge = false,
@@ -1047,3 +1048,68 @@ const Sound: PartialTreeNode = Object.freeze({
 		},
 	},
 })
+
+export type CommandTreePatcherFunction = (patch: CommandTreePatcher) => void
+
+export type CommandTreePatcherMap = Record<ReleaseVersion, CommandTreePatcherFunction>
+
+class CommandTreePatcher {
+	public release: ReleaseVersion
+
+	public currentPatch: PartialRootTreeNode = { children: {} }
+
+	public branch(...children: ([existingPath: string[], ...string[]] | string[])) {
+		const path: string[] = []
+
+		let newChildren: string[] = []
+
+		if (Array.isArray(children[0])) {
+			path.push(...children[0])
+
+			newChildren = children.slice(1) as string[]
+		} else {
+			newChildren = children as string[]
+		}
+
+		for (const [i, child] of newChildren.entries()) {
+			if ((i + 1) !== children.length) {
+				path.push(child, 'children')
+			}
+		}
+
+		return path
+	}
+
+	public since(targetRelease: ReleaseVersion) {
+		return ReleaseVersion.cmp(this.release, targetRelease) >= 0
+	}
+
+	public patch(path: string[], node: PartialTreeNode) {
+		let obj = this.currentPatch as any
+
+		let current: any = obj
+
+		for (let [i, str] of path.entries()) {
+			if ((i+1) === path.length) {
+				current[str] = node
+			} else {
+				if (!current[str]) {
+					current[str] = {}
+				}
+				current = current[str]
+			}
+		}
+	}
+
+	constructor(currentRelease: ReleaseVersion) {
+		this.release = currentRelease
+	}
+
+	public getPatch(patchers: CommandTreePatcherFunction[]) {
+		for (const patcher of patchers) {
+			patcher(this)
+		}
+
+		return this.currentPatch
+	}
+}

@@ -269,9 +269,6 @@ function inferType(node: NbtNode): SimplifiedMcdocTypeNoUnion {
 			return { kind: 'literal', value: { kind: 'int', value: node.value } }
 		case 'nbt:short':
 			return { kind: 'literal', value: { kind: 'short', value: node.value } }
-		case 'nbt:hex':
-		case 'nbt:bin':
-			return { kind: 'literal', value: { kind: 'long', value: node.value } }
 		case 'nbt:string':
 			return { kind: 'literal', value: { kind: 'string', value: node.value } }
 		case 'nbt:bool_function':

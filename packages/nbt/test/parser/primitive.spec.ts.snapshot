@@ -290,18 +290,14 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '+0f' 1`] = `
 exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '+0xff' 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 1,
-      "end": 3
-    },
+    "radix": "hex",
     "value": 255,
-    "hover": "\`255\`",
-    "fromRadixLiteral": true
+    "hover": "\`255\`"
   },
   "errors": []
 }
@@ -660,18 +656,14 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0b' 1`] = `
 exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0b101' 1`] = `
 {
   "node": {
-    "type": "nbt:bin",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "bin",
     "value": 5,
-    "hover": "\`5\`",
-    "fromRadixLiteral": true
+    "hover": "\`5\`"
   },
   "errors": []
 }
@@ -680,19 +672,45 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0b101' 1`] = `
 exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0b1010_1010' 1`] = `
 {
   "node": {
-    "type": "nbt:bin",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 11
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "bin",
     "value": 170,
     "hover": "\`170\`",
-    "hasUnderscoreSeparator": true,
-    "fromRadixLiteral": true
+    "hasUnderscoreSeparator": true
+  },
+  "errors": []
+}
+`;
+
+exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0b101d' 1`] = `
+{
+  "node": {
+    "type": "nbt:double",
+    "range": {
+      "start": 0,
+      "end": 6
+    },
+    "radix": "bin",
+    "value": 5
+  },
+  "errors": []
+}
+`;
+
+exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0b101f' 1`] = `
+{
+  "node": {
+    "type": "nbt:float",
+    "range": {
+      "start": 0,
+      "end": 6
+    },
+    "radix": "bin",
+    "value": 5
   },
   "errors": []
 }
@@ -706,8 +724,8 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0b101l' 1`] = `
       "start": 0,
       "end": 6
     },
-    "value": 5,
-    "fromRadixLiteral": true
+    "radix": "bin",
+    "value": 5
   },
   "errors": []
 }
@@ -754,21 +772,32 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0x' 1`] = `
 }
 `;
 
+exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0x42i' 1`] = `
+{
+  "node": {
+    "type": "nbt:int",
+    "range": {
+      "start": 0,
+      "end": 5
+    },
+    "radix": "hex",
+    "value": 66
+  },
+  "errors": []
+}
+`;
+
 exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xFF' 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 4
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 255,
-    "hover": "\`255\`",
-    "fromRadixLiteral": true
+    "hover": "\`255\`"
   },
   "errors": []
 }
@@ -777,19 +806,15 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xFF' 1`] = `
 exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xFF_FF' 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 7
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 65535,
     "hover": "\`65535\`",
-    "hasUnderscoreSeparator": true,
-    "fromRadixLiteral": true
+    "hasUnderscoreSeparator": true
   },
   "errors": []
 }
@@ -798,18 +823,14 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xFF_FF' 1`] = 
 exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xff' 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 4
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 255,
-    "hover": "\`255\`",
-    "fromRadixLiteral": true
+    "hover": "\`255\`"
   },
   "errors": []
 }
@@ -818,18 +839,29 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xff' 1`] = `
 exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xffb' 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 4091,
-    "hover": "\`4091\`",
-    "fromRadixLiteral": true
+    "hover": "\`4091\`"
+  },
+  "errors": []
+}
+`;
+
+exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '0xffs' 1`] = `
+{
+  "node": {
+    "type": "nbt:short",
+    "range": {
+      "start": 0,
+      "end": 5
+    },
+    "radix": "hex",
+    "value": 255
   },
   "errors": []
 }
@@ -1325,18 +1357,14 @@ exports[`nbt primitive() with pack format 71+ (1.21.5+) > Parse '_100' 1`] = `
 exports[`nbt primitive() with pre-1.21.5 (no _ or i suffix) > Parse '0b101' 1`] = `
 {
   "node": {
-    "type": "nbt:bin",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "bin",
     "value": 5,
-    "hover": "\`5\`",
-    "fromRadixLiteral": true
+    "hover": "\`5\`"
   },
   "errors": []
 }
@@ -1345,18 +1373,14 @@ exports[`nbt primitive() with pre-1.21.5 (no _ or i suffix) > Parse '0b101' 1`] 
 exports[`nbt primitive() with pre-1.21.5 (no _ or i suffix) > Parse '0x1d' 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 4
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 29,
-    "hover": "\`29\`",
-    "fromRadixLiteral": true
+    "hover": "\`29\`"
   },
   "errors": []
 }
@@ -1365,19 +1389,15 @@ exports[`nbt primitive() with pre-1.21.5 (no _ or i suffix) > Parse '0x1d' 1`] =
 exports[`nbt primitive() with pre-1.21.5 (no _ or i suffix) > Parse '0xFF_FF' 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 7
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 65535,
     "hover": "\`65535\`",
-    "hasUnderscoreSeparator": true,
-    "fromRadixLiteral": true
+    "hasUnderscoreSeparator": true
   },
   "errors": []
 }

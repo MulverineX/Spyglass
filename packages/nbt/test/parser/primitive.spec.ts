@@ -58,6 +58,11 @@ describe('nbt primitive() with pack format 71+ (1.21.5+)', () => {
 		{ content: '0b101l' },
 		{ content: '+0xff' },
 		{ content: '-0xff' },
+		// Typed collapses from a radix literal carry the `radix` field.
+		{ content: '0x42i' },
+		{ content: '0xffs' },
+		{ content: '0b101d' },
+		{ content: '0b101f' },
 		// Bare prefix with no digits should fail.
 		{ content: '0x' },
 		{ content: '0b' },

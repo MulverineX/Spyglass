@@ -1205,18 +1205,14 @@ exports[`nbt entry() with SNBT functions > with pack format 71+ (1.21.5+) > Pars
     },
     "children": [
       {
-        "type": "nbt:hex",
+        "type": "nbt:long",
         "range": {
           "start": 5,
           "end": 9
         },
-        "prefixRange": {
-          "start": 5,
-          "end": 7
-        },
+        "radix": "hex",
         "value": 255,
-        "hover": "\`255\`",
-        "fromRadixLiteral": true
+        "hover": "\`255\`"
       }
     ]
   },

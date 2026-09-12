@@ -1,18 +1,14 @@
 exports[`checkSnbtSyntax (1.21.5+) > binary literal accepted 1`] = `
 {
   "node": {
-    "type": "nbt:bin",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "bin",
     "value": 5,
-    "hover": "\`5\`",
-    "fromRadixLiteral": true
+    "hover": "\`5\`"
   },
   "errors": []
 }
@@ -53,18 +49,14 @@ exports[`checkSnbtSyntax (1.21.5+) > bool() call accepted 1`] = `
 exports[`checkSnbtSyntax (1.21.5+) > hex literal accepted 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 4
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 255,
-    "hover": "\`255\`",
-    "fromRadixLiteral": true
+    "hover": "\`255\`"
   },
   "errors": []
 }
@@ -73,18 +65,14 @@ exports[`checkSnbtSyntax (1.21.5+) > hex literal accepted 1`] = `
 exports[`checkSnbtSyntax (1.21.5+) > hex with byte suffix accepted 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 1067,
-    "hover": "\`1067\`",
-    "fromRadixLiteral": true
+    "hover": "\`1067\`"
   },
   "errors": []
 }
@@ -476,18 +464,14 @@ exports[`checkSnbtSyntax (no version) > skips gating when loadedVersion is undef
 exports[`checkSnbtSyntax (pre-1.21.5) > binary literal (suffix-less) 1`] = `
 {
   "node": {
-    "type": "nbt:bin",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "bin",
     "value": 5,
-    "hover": "\`5\`",
-    "fromRadixLiteral": true
+    "hover": "\`5\`"
   },
   "errors": [
     {
@@ -510,8 +494,32 @@ exports[`checkSnbtSyntax (pre-1.21.5) > binary literal with long suffix 1`] = `
       "start": 0,
       "end": 6
     },
-    "value": 5,
-    "fromRadixLiteral": true
+    "radix": "bin",
+    "value": 5
+  },
+  "errors": [
+    {
+      "range": {
+        "start": 0,
+        "end": 6
+      },
+      "message": "Hexadecimal/binary numeric literals are only valid in data pack format 71+ / minecraft 1.21.5",
+      "severity": 3
+    }
+  ]
+}
+`;
+
+exports[`checkSnbtSyntax (pre-1.21.5) > binary literal with short suffix (typed collapse) 1`] = `
+{
+  "node": {
+    "type": "nbt:short",
+    "range": {
+      "start": 0,
+      "end": 6
+    },
+    "radix": "bin",
+    "value": 5
   },
   "errors": [
     {
@@ -618,18 +626,14 @@ exports[`checkSnbtSyntax (pre-1.21.5) > explicit i/I int suffix 1`] = `
 exports[`checkSnbtSyntax (pre-1.21.5) > hex literal (suffix-less) 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 4
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 255,
-    "hover": "\`255\`",
-    "fromRadixLiteral": true
+    "hover": "\`255\`"
   },
   "errors": [
     {
@@ -647,18 +651,38 @@ exports[`checkSnbtSyntax (pre-1.21.5) > hex literal (suffix-less) 1`] = `
 exports[`checkSnbtSyntax (pre-1.21.5) > hex literal with byte suffix 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 5
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 1067,
-    "hover": "\`1067\`",
-    "fromRadixLiteral": true
+    "hover": "\`1067\`"
+  },
+  "errors": [
+    {
+      "range": {
+        "start": 0,
+        "end": 5
+      },
+      "message": "Hexadecimal/binary numeric literals are only valid in data pack format 71+ / minecraft 1.21.5",
+      "severity": 3
+    }
+  ]
+}
+`;
+
+exports[`checkSnbtSyntax (pre-1.21.5) > hex literal with int suffix (typed collapse) 1`] = `
+{
+  "node": {
+    "type": "nbt:int",
+    "range": {
+      "start": 0,
+      "end": 5
+    },
+    "radix": "hex",
+    "value": 66
   },
   "errors": [
     {
@@ -676,19 +700,15 @@ exports[`checkSnbtSyntax (pre-1.21.5) > hex literal with byte suffix 1`] = `
 exports[`checkSnbtSyntax (pre-1.21.5) > underscore + hex 1`] = `
 {
   "node": {
-    "type": "nbt:hex",
+    "type": "nbt:long",
     "range": {
       "start": 0,
       "end": 7
     },
-    "prefixRange": {
-      "start": 0,
-      "end": 2
-    },
+    "radix": "hex",
     "value": 65535,
     "hover": "\`65535\`",
-    "hasUnderscoreSeparator": true,
-    "fromRadixLiteral": true
+    "hasUnderscoreSeparator": true
   },
   "errors": [
     {

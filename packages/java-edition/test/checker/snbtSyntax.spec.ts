@@ -82,6 +82,20 @@ describe('checkSnbtSyntax (pre-1.21.5)', () => {
 			expected: ['nbt.parser.number.radix-not-supported'],
 		},
 		{
+			// Exercises the collapse branch: `0x42i` parses as
+			// `nbt:int` carrying `radix: 'hex'`. The pre-1.21.5
+			// checker should still flag it via the typed-collapse
+			// branch (long branch doesn't catch non-long nodes).
+			name: 'hex literal with int suffix (typed collapse)',
+			source: '0x42i',
+			expected: ['nbt.parser.number.radix-not-supported'],
+		},
+		{
+			name: 'binary literal with short suffix (typed collapse)',
+			source: '0b101s',
+			expected: ['nbt.parser.number.radix-not-supported'],
+		},
+		{
 			name: 'explicit i/I int suffix',
 			source: '42i',
 			expected: ['nbt.parser.number.explicit-int-suffix-not-supported'],
@@ -100,8 +114,8 @@ describe('checkSnbtSyntax (pre-1.21.5)', () => {
 			name: 'underscore + hex',
 			source: '0xFF_FF',
 			expected: [
-				// Both radix (because nbt:hex on old syntax) AND underscore
-				// fire - the radix one runs first.
+				// Both radix (because nbt:long with radix on old syntax) AND
+				// underscore fire - the radix one runs first.
 				'nbt.parser.number.radix-not-supported',
 			],
 		},

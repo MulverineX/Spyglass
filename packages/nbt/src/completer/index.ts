@@ -235,8 +235,6 @@ export function register(meta: core.MetaRegistry): void {
 	meta.registerCompleter('nbt:string', primitive)
 	meta.registerCompleter('nbt:short', primitive)
 	meta.registerCompleter('nbt:float', primitive)
-	meta.registerCompleter('nbt:hex', primitive)
-	meta.registerCompleter('nbt:bin', primitive)
 	meta.registerCompleter<NbtBoolFunctionNode>('nbt:bool_function', snbtFunction)
 	meta.registerCompleter<NbtUuidFunctionNode>('nbt:uuid_function', snbtFunction)
 

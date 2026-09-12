@@ -37,7 +37,6 @@ const NumeralPatterns:
 		hasSuffix: boolean
 		group: Group.LongAlike
 		// When set, the integer is parsed in the given radix (e.g. `0xFF` -> 255n).
-		// The pattern must include the prefix (`0x` or `0b`) which is highlighted as an escape.
 		radix?: 'hex' | 'bin'
 		min: bigint
 		max: bigint
@@ -118,11 +117,11 @@ const NumeralPatterns:
 		// (`+0x...` is allowed, but `-0x...` is not), so they only allow `+` or no sign.
 		// The optional trailing suffix is the standard SNBT type marker
 		// (`b`/`s`/`i`/`I`/`l`/`L`/`f`/`d`) - when present, the literal is parsed
-		// as the matching typed node; without a suffix it stays a generic
-		// `nbt:hex`/`nbt:bin` BigInt that mcdoc/runtime widens.
+		// as the matching typed node; without a suffix it stays an
+		// `nbt:long` carrying the matching `radix` flag for round-trip.
 		{
 			pattern: /^[+]?0x[0-9a-fA-F](?:_?[0-9a-fA-F])*(?:_?[bsilLfdiBSILFDI])?$/i,
-			type: 'nbt:hex',
+			type: 'nbt:long',
 			hasSuffix: false,
 			group: Group.LongAlike,
 			radix: 'hex',
@@ -131,7 +130,7 @@ const NumeralPatterns:
 		},
 		{
 			pattern: /^[+]?0b[01](?:_?[01])*(?:_?[bsilLfdiBSILFDI])?$/i,
-			type: 'nbt:bin',
+			type: 'nbt:long',
 			hasSuffix: false,
 			group: Group.LongAlike,
 			radix: 'bin',
@@ -185,8 +184,8 @@ export const primitive: core.InfallibleParser<NbtPrimitiveNode> = (
 			// remaining digits, then convert to bigint via BigInt. The radix is
 			// determined by the actual prefix character. If a type suffix
 			// (`b`/`s`/`i`/`I`/`l`/`L`/`f`/`d`) follows the digits we branch into
-			// the matching typed node; otherwise we keep the generic
-			// `nbt:hex`/`nbt:bin` BigInt for mcdoc/runtime to widen.
+			// the matching typed node; otherwise we keep an `nbt:long` carrying
+			// the matching `radix` flag for the formatter to round-trip.
 			// Note: Has support for negative hex/binary input for future proofing,
 			// support for them is prevented by the regex and a specific error is
 			// provided.
@@ -194,8 +193,6 @@ export const primitive: core.InfallibleParser<NbtPrimitiveNode> = (
 				const hasSign = unquotedResult.value[0] === '+' || unquotedResult.value[0] === '-'
 				const prefixChar = unquotedResult.value[(hasSign ? 1 : 0) + 1]
 				const radix: 'hex' | 'bin' = (prefixChar === 'x' || prefixChar === 'X') ? 'hex' : 'bin'
-				const prefixStart = unquotedResult.range.start + (hasSign ? 1 : 0)
-				const prefixRange = core.Range.create(prefixStart, prefixStart + 2)
 
 				const startCursor = src.cursor
 				if (hasSign) {
@@ -235,7 +232,8 @@ export const primitive: core.InfallibleParser<NbtPrimitiveNode> = (
 					? { hasUnderscoreSeparator: true as const }
 					: {}
 
-				// No suffix: keep the generic BigInt node (mcdoc/runtime widens).
+				// No suffix: keep an `nbt:long` carrying the matching `radix`
+				// flag so the formatter can round-trip back to `0x...`/`0b...`.
 				if (!suffixChar) {
 					let isOutOfRange = false
 					if (e.min !== undefined && e.max !== undefined) {
@@ -260,14 +258,13 @@ export const primitive: core.InfallibleParser<NbtPrimitiveNode> = (
 					}
 					updateUnquoted()
 					const out: NbtNumberNode = {
-						type: e.type,
+						type: 'nbt:long',
 						range: core.Range.create(startCursor, src.cursor),
-						prefixRange,
+						radix: e.radix,
 						value: bigValue,
 						hover: `\`${bigValue}\``,
 						...annotated,
 					} as NbtNumberNode
-					out.fromRadixLiteral = true
 					return out
 				}
 
@@ -337,40 +334,33 @@ export const primitive: core.InfallibleParser<NbtPrimitiveNode> = (
 				}
 				updateUnquoted()
 				const range = core.Range.create(startCursor, src.cursor)
-				// For suffixed radix literals that collapse into a typed node
-				// (`nbt:byte`/`nbt:short`/`nbt:int`/`nbt:long`/`nbt:float`/`nbt:double`)
-				// we deliberately do NOT attach `prefixRange` or `suffixRange` -
-				// those are reserved for the generic `nbt:hex`/`nbt:bin` nodes
-				// via {@link NbtRadixPrefixRange}, and the typed-node colorizers
-				// (`core.colorizer.number`) don't try to highlight prefixes or
-				// suffixes anyway.
 				if (suffixLower === 'l') {
 					const out: NbtNumberNode = {
 						type: 'nbt:long',
 						range,
+						radix: e.radix,
 						value: bigValue,
 						...annotated,
 					} as NbtNumberNode
-					out.fromRadixLiteral = true
 					return out
 				}
 				if (isFloat) {
 					const out: NbtNumberNode = {
 						type: nodeType,
 						range,
+						radix: e.radix,
 						value: Number(bigValue),
 						...annotated,
 					} as NbtNumberNode
-					out.fromRadixLiteral = true
 					return out
 				}
 				const out: NbtNumberNode = {
 					type: nodeType,
 					range,
+					radix: e.radix,
 					value: Number(bigValue),
 					...annotated,
 				} as NbtNumberNode
-				out.fromRadixLiteral = true
 				return out
 			}
 			let isOutOfRange = false

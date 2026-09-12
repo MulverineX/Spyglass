@@ -19,14 +19,15 @@ interface NbtNumberBaseNode {
 	 */
 	hasUnderscoreSeparator?: boolean
 	/**
-	 * `true` when the literal was written as a hex/binary prefixed value
-	 * (`0x...` / `0b...`). The node type already reports this for the
-	 * suffix-less case (`nbt:hex` / `nbt:bin`); the flag lets the
-	 * SNBT-syntax checker recognise the suffixed radix form
-	 * (`0x42b`, `0b101l`, ...) which collapses into a regular typed node
-	 * (`nbt:byte`, `nbt:long`, ...) on the AST.
+	 * Set when the literal was written with a `0x`/`0b` radix prefix
+	 * (1.21.5+ only). Lives on every numeric node so the suffix-less form,
+	 * the `0x...l` long form, and the typed collapses (`0x42b` → `nbt:byte`,
+	 * `0xffs` → `nbt:short`, ...) all share the same signal. The
+	 * SNBT-syntax checker reads this to flag pre-1.21.5 usages; the
+	 * formatter reads it to round-trip back to the original hex/binary
+	 * representation.
 	 */
-	fromRadixLiteral?: boolean
+	radix?: 'hex' | 'bin'
 }
 
 export type NbtNode = NbtPrimitiveNode | NbtCompoundNode | NbtCollectionNode | NbtSnbtFunctionNode
@@ -66,22 +67,14 @@ export namespace NbtNumberNode {
 }
 
 // #region NbtIntegerAlikeNode
-export type NbtIntegerAlikeNode =
-	| NbtByteNode
-	| NbtShortNode
-	| NbtIntNode
-	| NbtLongNode
-	| NbtHexadecimalNode
-	| NbtBinaryNode
+export type NbtIntegerAlikeNode = NbtByteNode | NbtShortNode | NbtIntNode | NbtLongNode
 export namespace NbtIntegerAlikeNode {
 	/* istanbul ignore next */
 	export function is(node: core.AstNode | undefined): node is NbtIntegerAlikeNode {
 		return (NbtByteNode.is(node)
 			|| NbtShortNode.is(node)
 			|| NbtIntNode.is(node)
-			|| NbtLongNode.is(node)
-			|| NbtHexadecimalNode.is(node)
-			|| NbtBinaryNode.is(node))
+			|| NbtLongNode.is(node))
 	}
 }
 
@@ -130,37 +123,6 @@ export namespace NbtLongNode {
 	/* istanbul ignore next */
 	export function is(node: core.AstNode | undefined): node is NbtLongNode {
 		return (node as NbtLongNode | undefined)?.type === 'nbt:long'
-	}
-}
-
-// Hex/binary value nodes are parsed via 0x/0b prefixes. They're not just for integer values -
-// any NBT value can be represented in hex/binary. The `prefixRange` marks the location of the
-// prefix (`0x` or `0b`) so the colorizer can highlight it as an escape.
-interface NbtRadixPrefixRange {
-	prefixRange: core.Range
-}
-
-export interface NbtHexadecimalNode
-	extends core.LongBaseNode, NbtBaseNode, NbtNumberBaseNode, NbtRadixPrefixRange
-{
-	readonly type: 'nbt:hex'
-}
-export namespace NbtHexadecimalNode {
-	/* istanbul ignore next */
-	export function is(node: core.AstNode | undefined): node is NbtHexadecimalNode {
-		return (node as NbtHexadecimalNode | undefined)?.type === 'nbt:hex'
-	}
-}
-
-export interface NbtBinaryNode
-	extends core.LongBaseNode, NbtBaseNode, NbtNumberBaseNode, NbtRadixPrefixRange
-{
-	readonly type: 'nbt:bin'
-}
-export namespace NbtBinaryNode {
-	/* istanbul ignore next */
-	export function is(node: core.AstNode | undefined): node is NbtBinaryNode {
-		return (node as NbtBinaryNode | undefined)?.type === 'nbt:bin'
 	}
 }
 // #endregion

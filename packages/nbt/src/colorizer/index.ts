@@ -2,13 +2,11 @@ import type { MetaRegistry } from '@spyglassmc/core'
 import * as core from '@spyglassmc/core'
 import { ColorToken } from '@spyglassmc/core'
 import type {
-	NbtBinaryNode,
 	NbtBoolFunctionNode,
 	NbtByteNode,
 	NbtCompoundNode,
 	NbtDoubleNode,
 	NbtFloatNode,
-	NbtHexadecimalNode,
 	NbtIntNode,
 	NbtLongNode,
 	NbtShortNode,
@@ -16,15 +14,6 @@ import type {
 	NbtStringNode,
 	NbtUuidFunctionNode,
 } from '../node/index.js'
-
-type NbtRadixNode = NbtHexadecimalNode | NbtBinaryNode
-
-const radix: core.Colorizer<NbtRadixNode> = (node) => {
-	return [
-		ColorToken.create(node.prefixRange, 'escape'),
-		ColorToken.create(core.Range.create(node.prefixRange.end, node.range.end), 'number'),
-	]
-}
 
 const snbtFunction: core.Colorizer<NbtSnbtFunctionNode> = (node) => {
 	return [
@@ -67,8 +56,6 @@ export function register(meta: MetaRegistry) {
 	meta.registerColorizer<NbtLongNode>('nbt:long', core.colorizer.number)
 	meta.registerColorizer<NbtFloatNode>('nbt:float', core.colorizer.number)
 	meta.registerColorizer<NbtDoubleNode>('nbt:double', core.colorizer.number)
-	meta.registerColorizer<NbtHexadecimalNode>('nbt:hex', radix)
-	meta.registerColorizer<NbtBinaryNode>('nbt:bin', radix)
 	meta.registerColorizer<NbtBoolFunctionNode>('nbt:bool_function', snbtFunction)
 	meta.registerColorizer<NbtUuidFunctionNode>('nbt:uuid_function', snbtFunction)
 	meta.registerColorizer<NbtCompoundNode>('nbt:compound', compound)

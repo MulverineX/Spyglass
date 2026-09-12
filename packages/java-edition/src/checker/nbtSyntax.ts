@@ -2,10 +2,9 @@ import * as core from '@spyglassmc/core'
 import { localize } from '@spyglassmc/locales'
 import type { NbtNode } from '@spyglassmc/nbt'
 import {
-	NbtBinaryNode,
 	NbtBoolFunctionNode,
-	NbtHexadecimalNode,
 	NbtIntNode,
+	NbtLongNode,
 	NbtNumberNode,
 	NbtStringNode,
 	NbtUuidFunctionNode,
@@ -58,7 +57,10 @@ function walk(node: NbtNode, ctx: core.CheckerContext, state: WalkState): void {
 				core.ErrorSeverity.Error,
 			)
 		}
-	} else if (NbtHexadecimalNode.is(node) || NbtBinaryNode.is(node)) {
+	} else if (NbtLongNode.is(node) && node.radix !== undefined) {
+		// Catches both the suffix-less radix form (`0xff`, `0b101`) and the
+		// suffixed long form (`0xffl`, `0b101l`) - both carry the `radix`
+		// flag after the nbt:hex/nbt:bin → nbt:long fold.
 		if (state.isOldSyntax) {
 			ctx.err.report(
 				localize('nbt.parser.number.radix-not-supported'),
@@ -85,10 +87,12 @@ function walk(node: NbtNode, ctx: core.CheckerContext, state: WalkState): void {
 			core.ErrorSeverity.Information,
 		)
 		state.underscoreNotified = true
-	} else if (NbtNumberNode.is(node) && node.fromRadixLiteral && state.isOldSyntax) {
-		// Catches the suffix-less case (`0xff`, `0b101`) via node type above,
-		// and the suffixed radix case (`0x42b`, `0b101l`) via this flag - both
-		// are 1.21.5+ syntax only.
+	} else if (NbtNumberNode.is(node) && node.radix !== undefined && state.isOldSyntax) {
+		// Catches the typed radix collapses (`0x42b`, `0xffs`, `0b101i`,
+		// `0b101f`, `0b101d`) - 1.21.5+ syntax only. The `0x...l` long form
+		// and the suffix-less radix form are caught by the
+		// `NbtLongNode.radix` branch above; this branch only fires for
+		// non-long collapses now.
 		ctx.err.report(
 			localize('nbt.parser.number.radix-not-supported'),
 			node,

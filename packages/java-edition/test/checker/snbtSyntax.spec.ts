@@ -1,18 +1,19 @@
 import * as core from '@spyglassmc/core'
 import { CheckerContext, ParserContext, Source } from '@spyglassmc/core'
 import { mockProjectData } from '@spyglassmc/core/test/utils.ts'
-import { checkSnbtSyntax } from '@spyglassmc/java-edition/lib/checker/index.js'
+import { register } from '@spyglassmc/java-edition/lib/checker/index.js'
 import { localize } from '@spyglassmc/locales'
-import type { NbtNode } from '@spyglassmc/nbt'
+import * as nbt from '@spyglassmc/nbt'
 import { entry } from '@spyglassmc/nbt/lib/parser/index.js'
 import { describe, it } from 'node:test'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
 /**
- * Parses `content` as SNBT and runs {@link checkSnbtSyntax} on the resulting
- * AST with the project's `loadedVersion` set to `version`. Returns the merged
- * diagnostics emitted by the parser and the checker step, plus the AST root
- * (so the snapshot captures both the node shape and the error list).
+ * Parses `content` as SNBT and runs the je SNBT-syntax checkers on the
+ * resulting AST with the project's `loadedVersion` set to `version`. Returns
+ * the merged diagnostics emitted by the parser and the checker step, plus
+ * the AST root (so the snapshot captures both the node shape and the error
+ * list).
  */
 function check(content: string, version?: string) {
 	const ctx: Record<string, string> = {}
@@ -20,6 +21,7 @@ function check(content: string, version?: string) {
 		ctx['loadedVersion'] = version
 	}
 	const project = mockProjectData({ ctx })
+	register(project.meta)
 	const parserCtx = ParserContext.create(project, {
 		doc: TextDocument.create('', '', 0, content),
 	})
@@ -30,7 +32,7 @@ function check(content: string, version?: string) {
 		const checkerCtx = CheckerContext.create(project, {
 			doc: TextDocument.create('', '', 0, content),
 		})
-		checkSnbtSyntax(node as NbtNode, checkerCtx)
+		core.checker.fallbackSync(node, checkerCtx)
 		for (const e of checkerCtx.err.dump()) {
 			errors.push(e)
 		}
@@ -242,5 +244,73 @@ describe('checkSnbtSyntax (no version)', () => {
 			)
 		}
 		t.assert.snapshot(result)
+	})
+})
+
+describe('checkSnbtSyntax (via typeDefinition wrapper)', () => {
+	/**
+	 * Exercises the production path: an mcfunction-style mcdoc dispatcher
+	 * type-checks an NBT subtree, and `nbt.checker.typeDefinition` must run
+	 * the je SNBT-syntax checkers BEFORE mcdoc/runtime descends so that
+	 * version-aware diagnostics still fire. Regression guard for the
+	 * refactor that replaced the loose `MetaRegistry.snbtSyntaxCheck`
+	 * hook with per-type checkers.
+	 */
+	function typeCheck(content: string, version: string | undefined) {
+		const ctx: Record<string, string> = {}
+		if (version !== undefined) {
+			ctx['loadedVersion'] = version
+		}
+		const project = mockProjectData({ ctx })
+		register(project.meta)
+		const parserCtx = ParserContext.create(project, {
+			doc: TextDocument.create('', '', 0, content),
+		})
+		const src = new Source(content)
+		const node = entry(src, parserCtx)
+		const errors = [...parserCtx.err.dump()]
+		if (node && node !== core.Failure) {
+			const checkerCtx = CheckerContext.create(project, {
+				doc: TextDocument.create('', '', 0, content),
+			})
+			nbt.checker.typeDefinition({ kind: 'any' })(node, checkerCtx)
+			for (const e of checkerCtx.err.dump()) {
+				errors.push(e)
+			}
+		}
+		return errors
+	}
+
+	it('fires radix-not-supported on pre-1.21.5 hex inside a typed compound', () => {
+		const errors = typeCheck('{a: 0xff}', '1.21.4')
+		if (!hasError(errors, 'nbt.parser.number.radix-not-supported')) {
+			throw new Error(
+				`Expected radix-not-supported but got:\n  ${
+					errors.map(e => e.message).join('\n  ')
+				}`,
+			)
+		}
+	})
+
+	it('fires underscore-not-supported on pre-1.21.5 digit separator inside a typed compound', () => {
+		const errors = typeCheck('{a: 1_000}', '1.21.4')
+		if (!hasError(errors, 'nbt.parser.number.underscore-not-supported')) {
+			throw new Error(
+				`Expected underscore-not-supported but got:\n  ${
+					errors.map(e => e.message).join('\n  ')
+				}`,
+			)
+		}
+	})
+
+	it('fires bool/uuid snbt-functions-not-supported inside a typed compound', () => {
+		const errors = typeCheck('{a: bool(0)}', '1.21.4')
+		if (!hasError(errors, 'nbt.parser.function.snbt-functions-not-supported')) {
+			throw new Error(
+				`Expected snbt-functions-not-supported but got:\n  ${
+					errors.map(e => e.message).join('\n  ')
+				}`,
+			)
+		}
 	})
 })

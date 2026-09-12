@@ -21,9 +21,7 @@ import {
 import { getBlocksFromItem, getEntityFromItem } from './mcdocUtil.js'
 
 /**
- * Runs `typeDefinition` on the typed wrapper's inner NbtNode. The version-aware
- * SNBT-syntax check is picked up from {@link core.MetaRegistry.snbtSyntaxCheck}
- * by {@link invokeSnbtSyntaxCheck} once `typeDefinition` runs.
+ * Runs `typeDefinition` on the typed wrapper's inner NbtNode.
  */
 export function typed(
 	node: TypedNbtNode,
@@ -67,7 +65,6 @@ export function index(
 			}
 
 			return (node, ctx) => {
-				invokeSnbtSyntaxCheck(node, ctx)
 				typeDefinition(typeDef, options)(node, ctx)
 			}
 	}
@@ -86,16 +83,6 @@ function getIndices(
 }
 
 /**
- * Invoke the consumer-registered SNBT-syntax check, if any. Java-edition sets
- * this to gate version-aware syntax (hex/binary literals, `bool(...)` /
- * `uuid(...)` calls, underscore digit separators) without every nbt caller
- * having to thread an option through.
- */
-function invokeSnbtSyntaxCheck(node: NbtNode, ctx: core.CheckerContext): void {
-	ctx.meta.snbtSyntaxCheck?.(node, ctx)
-}
-
-/**
  * @param identifier An identifier of mcdoc compound definition. e.g. `::minecraft::util::invitem::InventoryItem`
  */
 export function typeDefinition(
@@ -103,7 +90,11 @@ export function typeDefinition(
 	options: Options = {},
 ): core.SyncChecker<NbtNode> {
 	return (node, ctx) => {
-		invokeSnbtSyntaxCheck(node, ctx)
+		// Run any per-NbtNode-type checkers (e.g. the java-edition
+		// SNBT-syntax check) before mcdoc/runtime descends so that
+		// version-aware syntax diagnostics land alongside the type
+		// errors instead of after them.
+		core.checker.fallbackSync(node, ctx)
 		mcdoc.runtime.checker.typeDefinition<NbtNode>(
 			[{ originalNode: node, inferredType: inferType(node) }],
 			typeDef,

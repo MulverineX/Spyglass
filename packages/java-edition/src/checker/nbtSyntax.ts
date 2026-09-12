@@ -1,11 +1,15 @@
 import * as core from '@spyglassmc/core'
 import { localize } from '@spyglassmc/locales'
-import type { NbtNode } from '@spyglassmc/nbt'
-import {
+import type {
 	NbtBoolFunctionNode,
+	NbtByteNode,
+	NbtDoubleNode,
+	NbtFloatNode,
+	NbtFunctionNode,
 	NbtIntNode,
 	NbtLongNode,
 	NbtNumberNode,
+	NbtShortNode,
 	NbtStringNode,
 	NbtUuidFunctionNode,
 } from '@spyglassmc/nbt'
@@ -15,142 +19,158 @@ import { ReleaseVersion } from '../dependency/common.js'
 const MIN_NEW_SYNTAX: ReleaseVersion = '1.21.5'
 
 /**
- * Recursively walks an {@link NbtNode} tree and reports the SNBT-syntax
- * checks that used to live inside the parser. The parsers now produce the
- * new-syntax AST unconditionally; this step gates the result against the
- * project's `loadedVersion`.
- *
- * Errors reported:
- *
- * - `snbt-functions-not-supported` - `bool(...)` / `uuid(...)` before 1.21.5.
- * - `radix-not-supported` - hex/binary literals before 1.21.5.
- * - `explicit-int-suffix-not-supported` - `42i` / `42I` before 1.21.5.
- * - `underscore-not-supported` - digit separators before 1.21.5 (info).
- * - `unquoted-string-first-character` - unquoted string starting with
- *   `[0-9.+-]` on 1.21.5+.
- * - `negative-radix-not-supported` - negative hex/binary string literal on
- *   1.21.5+.
+ * Per-checker-call dedup for the underscore-separator info-level
+ * diagnostic. The walker used to thread a `state` object through the
+ * recursion; without that, a module-level `WeakSet` keyed on the
+ * checker context does the same job - and naturally GC's when the
+ * context is dropped.
  */
-export function checkSnbtSyntax(root: NbtNode, ctx: core.CheckerContext): void {
-	const release = ctx.project['loadedVersion'] as ReleaseVersion | undefined
-	if (!release) {
-		// Version not yet resolved. Skip gating; the mcdoc/runtime checker will
-		// surface actual errors regardless.
-		return
+const underscoreNotifiedContexts = new WeakSet<core.CheckerContext>()
+
+function getRelease(ctx: core.CheckerContext): ReleaseVersion | undefined {
+	return ctx.project['loadedVersion'] as ReleaseVersion | undefined
+}
+
+function isOldSyntax(ctx: core.CheckerContext): boolean {
+	const release = getRelease(ctx)
+	if (release === undefined) {
+		// Version not yet resolved. Skip gating; the mcdoc/runtime checker
+		// will surface actual errors regardless.
+		return false
 	}
-	const isOldSyntax = ReleaseVersion.cmp(release, MIN_NEW_SYNTAX) < 0
-	walk(root, ctx, { isOldSyntax, underscoreNotified: false })
+	return ReleaseVersion.cmp(release, MIN_NEW_SYNTAX) < 0
 }
 
-interface WalkState {
-	isOldSyntax: boolean
-	/** Tracks whether the underscore-separator info has already been emitted. */
-	underscoreNotified: boolean
-}
-
-function walk(node: NbtNode, ctx: core.CheckerContext, state: WalkState): void {
-	if (NbtBoolFunctionNode.is(node) || NbtUuidFunctionNode.is(node)) {
-		if (state.isOldSyntax) {
-			ctx.err.report(
-				localize('nbt.parser.function.snbt-functions-not-supported'),
-				node.prefixRange,
-				core.ErrorSeverity.Error,
-			)
-		}
-	} else if (NbtLongNode.is(node) && node.radix !== undefined) {
-		// Catches both the suffix-less radix form (`0xff`, `0b101`) and the
-		// suffixed long form (`0xffl`, `0b101l`) - both carry the `radix`
-		// flag after the nbt:hex/nbt:bin → nbt:long fold.
-		if (state.isOldSyntax) {
-			ctx.err.report(
-				localize('nbt.parser.number.radix-not-supported'),
-				node,
-				core.ErrorSeverity.Error,
-			)
-		}
-	} else if (NbtIntNode.is(node) && node.hasExplicitIntSuffix) {
-		if (state.isOldSyntax) {
-			ctx.err.report(
-				localize('nbt.parser.number.explicit-int-suffix-not-supported'),
-				node,
-				core.ErrorSeverity.Error,
-			)
-		}
-	} else if (
-		NbtNumberNode.is(node) && node.hasUnderscoreSeparator && state.isOldSyntax
-		&& !state.underscoreNotified
-	) {
-		// `1_000_000` is a perfectly valid unquoted string value pre-1.21.5. Therefore, this shouldn't be an error nor a warning.
-		ctx.err.report(
-			localize('nbt.parser.number.underscore-not-supported'),
-			node,
-			core.ErrorSeverity.Information,
-		)
-		state.underscoreNotified = true
-	} else if (NbtNumberNode.is(node) && node.radix !== undefined && state.isOldSyntax) {
+/**
+ * Shared body for the typed number checkers. Reports the
+ * `radix-not-supported` error (when `node.radix` is set) and the
+ * `underscore-not-supported` info (when `node.hasUnderscoreSeparator` is
+ * set), matching the order the old walker used so existing snapshots stay
+ * stable.
+ */
+function checkRadixAndUnderscore(
+	node: NbtNumberNode,
+	ctx: core.CheckerContext,
+	oldSyntax: boolean,
+): void {
+	if (node.radix !== undefined && oldSyntax) {
 		// Catches the typed radix collapses (`0x42b`, `0xffs`, `0b101i`,
-		// `0b101f`, `0b101d`) - 1.21.5+ syntax only. The `0x...l` long form
-		// and the suffix-less radix form are caught by the
-		// `NbtLongNode.radix` branch above; this branch only fires for
-		// non-long collapses now.
+		// `0b101f`, `0b101d`). The suffix-less form and the `0x...l` long
+		// form are caught by `checkLong`. When the radix branch fires,
+		// the old walker used `else if`, so the underscore-separator info
+		// below was suppressed for this node - mirror that here to keep
+		// existing snapshots stable.
 		ctx.err.report(
 			localize('nbt.parser.number.radix-not-supported'),
 			node,
 			core.ErrorSeverity.Error,
 		)
-	} else if (NbtStringNode.is(node)) {
-		// Source-text heuristics (leading char, negative radix) work equally well
-		// against `node.value` when the string came from a JSON-string attach,
-		// which is the case where `ctx.src.slice(node.range)` would be wrong.
-		if (!state.isOldSyntax && !node.quote) {
-			const v = node.value
-			if (/^-0[xXbB]/.test(v)) {
-				ctx.err.report(
-					localize('nbt.parser.number.negative-radix-not-supported'),
-					node,
-					core.ErrorSeverity.Error,
-				)
-			} else if (/^[0-9.+-]/.test(v)) {
-				ctx.err.report(
-					localize('nbt.parser.string.unquoted-string-first-character'),
-					node,
-					core.ErrorSeverity.Error,
-				)
-			}
-		}
+		return
 	}
+	if (node.hasUnderscoreSeparator && oldSyntax && !underscoreNotifiedContexts.has(ctx)) {
+		// `1_000_000` is a perfectly valid unquoted string value pre-1.21.5.
+		// Therefore, this shouldn't be an error nor a warning - just an info,
+		// and only once per file.
+		ctx.err.report(
+			localize('nbt.parser.number.underscore-not-supported'),
+			node,
+			core.ErrorSeverity.Information,
+		)
+		underscoreNotifiedContexts.add(ctx)
+	}
+}
 
-	// Recurse. Compounds store values in `PairNode` children; lists/arrays use
-	// `ItemNode` children; `uuid(...)` synthesizes an int array alongside its
-	// string argument; `bool(...)` carries its argument directly.
-	switch (node.type) {
-		case 'nbt:compound':
-			for (const pair of node.children) {
-				if (pair.value) {
-					walk(pair.value as NbtNode, ctx, state)
-				}
-			}
-			break
-		case 'nbt:list':
-		case 'nbt:byte_array':
-		case 'nbt:int_array':
-		case 'nbt:long_array':
-			for (const item of node.children) {
-				if (item.value) {
-					walk(item.value as NbtNode, ctx, state)
-				}
-			}
-			break
-		case 'nbt:uuid_function':
-			walk(node.intArray, ctx, state)
-			for (const arg of node.children) {
-				walk(arg, ctx, state)
-			}
-			break
-		case 'nbt:bool_function':
-			for (const arg of node.children) {
-				walk(arg, ctx, state)
-			}
-			break
+function reportSnbtFunctionsNotSupported(
+	node: NbtFunctionNode,
+	ctx: core.CheckerContext,
+): void {
+	ctx.err.report(
+		localize('nbt.parser.function.snbt-functions-not-supported'),
+		node.prefixRange,
+		core.ErrorSeverity.Error,
+	)
+}
+
+const checkBoolFunction: core.SyncChecker<NbtBoolFunctionNode> = (node, ctx) => {
+	if (isOldSyntax(ctx)) {
+		reportSnbtFunctionsNotSupported(node, ctx)
 	}
+}
+
+const checkUuidFunction: core.SyncChecker<NbtUuidFunctionNode> = (node, ctx) => {
+	if (isOldSyntax(ctx)) {
+		reportSnbtFunctionsNotSupported(node, ctx)
+	}
+}
+
+const checkLong: core.SyncChecker<NbtLongNode> = (node, ctx) => {
+	// Catches both the suffix-less radix form (`0xff`, `0b101`) and the
+	// suffixed long form (`0xffl`, `0b101l`) - both carry the `radix`
+	// flag after the nbt:hex/nbt:bin → nbt:long fold. The shared body
+	// also handles the underscore-separator info.
+	checkRadixAndUnderscore(node, ctx, isOldSyntax(ctx))
+}
+
+const checkInt: core.SyncChecker<NbtIntNode> = (node, ctx) => {
+	const oldSyntax = isOldSyntax(ctx)
+	if (oldSyntax && node.hasExplicitIntSuffix) {
+		ctx.err.report(
+			localize('nbt.parser.number.explicit-int-suffix-not-supported'),
+			node,
+			core.ErrorSeverity.Error,
+		)
+	}
+	checkRadixAndUnderscore(node, ctx, oldSyntax)
+}
+
+const checkByte: core.SyncChecker<NbtByteNode> = (node, ctx) => {
+	checkRadixAndUnderscore(node, ctx, isOldSyntax(ctx))
+}
+
+const checkShort: core.SyncChecker<NbtShortNode> = (node, ctx) => {
+	checkRadixAndUnderscore(node, ctx, isOldSyntax(ctx))
+}
+
+const checkFloat: core.SyncChecker<NbtFloatNode> = (node, ctx) => {
+	checkRadixAndUnderscore(node, ctx, isOldSyntax(ctx))
+}
+
+const checkDouble: core.SyncChecker<NbtDoubleNode> = (node, ctx) => {
+	checkRadixAndUnderscore(node, ctx, isOldSyntax(ctx))
+}
+
+const checkString: core.SyncChecker<NbtStringNode> = (node, ctx) => {
+	// Source-text heuristics (leading char, negative radix) work equally
+	// well against `node.value` when the string came from a JSON-string
+	// attach, which is the case where `ctx.src.slice(node.range)` would be
+	// wrong.
+	if (isOldSyntax(ctx) || node.quote) {
+		return
+	}
+	const v = node.value
+	if (/^-0[xXbB]/.test(v)) {
+		ctx.err.report(
+			localize('nbt.parser.number.negative-radix-not-supported'),
+			node,
+			core.ErrorSeverity.Error,
+		)
+	} else if (/^[0-9.+-]/.test(v)) {
+		ctx.err.report(
+			localize('nbt.parser.string.unquoted-string-first-character'),
+			node,
+			core.ErrorSeverity.Error,
+		)
+	}
+}
+
+export function register(meta: core.MetaRegistry): void {
+	meta.registerChecker<NbtBoolFunctionNode>('nbt:bool_function', checkBoolFunction)
+	meta.registerChecker<NbtUuidFunctionNode>('nbt:uuid_function', checkUuidFunction)
+	meta.registerChecker<NbtLongNode>('nbt:long', checkLong)
+	meta.registerChecker<NbtIntNode>('nbt:int', checkInt)
+	meta.registerChecker<NbtByteNode>('nbt:byte', checkByte)
+	meta.registerChecker<NbtShortNode>('nbt:short', checkShort)
+	meta.registerChecker<NbtFloatNode>('nbt:float', checkFloat)
+	meta.registerChecker<NbtDoubleNode>('nbt:double', checkDouble)
+	meta.registerChecker<NbtStringNode>('nbt:string', checkString)
 }

@@ -7,15 +7,15 @@ import type {
 	NbtCompoundNode,
 	NbtDoubleNode,
 	NbtFloatNode,
+	NbtFunctionNode,
 	NbtIntNode,
 	NbtLongNode,
 	NbtShortNode,
-	NbtSnbtFunctionNode,
 	NbtStringNode,
 	NbtUuidFunctionNode,
 } from '../node/index.js'
 
-const snbtFunction: core.Colorizer<NbtSnbtFunctionNode> = (node) => {
+const snbtFunction: core.Colorizer<NbtFunctionNode> = (node) => {
 	return [
 		ColorToken.create(
 			core.Range.create(node.prefixRange.start, node.prefixRange.start + 4),

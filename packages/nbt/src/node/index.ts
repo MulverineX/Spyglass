@@ -30,7 +30,7 @@ interface NbtNumberBaseNode {
 	radix?: 'hex' | 'bin'
 }
 
-export type NbtNode = NbtPrimitiveNode | NbtCompoundNode | NbtCollectionNode | NbtSnbtFunctionNode
+export type NbtNode = NbtPrimitiveNode | NbtCompoundNode | NbtCollectionNode | NbtFunctionNode
 export namespace NbtNode {
 	/* istanbul ignore next */
 	export function is(node: core.AstNode | undefined): node is NbtNode {
@@ -127,16 +127,16 @@ export namespace NbtLongNode {
 }
 // #endregion
 
-// #region NbtSnbtFunctionNode
+// #region NbtFunctionNode
 // Base type for SNBT function calls (e.g. `bool(value)`). Concrete function node types
 // (e.g. `nbt:bool_function`) extend this. `prefixRange` covers the function name and opening
 // parenthesis (e.g. `bool(`); `suffixRange` covers the closing parenthesis (`)`). The
 // argument(s) are stored as `children`. Colorizers color `prefixRange` and `suffixRange`
 // as `escape`.
-export type NbtSnbtFunctionNode = NbtBoolFunctionNode | NbtUuidFunctionNode
-export namespace NbtSnbtFunctionNode {
+export type NbtFunctionNode = NbtBoolFunctionNode | NbtUuidFunctionNode
+export namespace NbtFunctionNode {
 	/* istanbul ignore next */
-	export function is(node: core.AstNode | undefined): node is NbtSnbtFunctionNode {
+	export function is(node: core.AstNode | undefined): node is NbtFunctionNode {
 		return NbtBoolFunctionNode.is(node) || NbtUuidFunctionNode.is(node)
 	}
 }

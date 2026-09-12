@@ -248,14 +248,6 @@ describe('checkSnbtSyntax (no version)', () => {
 })
 
 describe('checkSnbtSyntax (via typeDefinition wrapper)', () => {
-	/**
-	 * Exercises the production path: an mcfunction-style mcdoc dispatcher
-	 * type-checks an NBT subtree, and `nbt.checker.typeDefinition` must run
-	 * the je SNBT-syntax checkers BEFORE mcdoc/runtime descends so that
-	 * version-aware diagnostics still fire. Regression guard for the
-	 * refactor that replaced the loose `MetaRegistry.snbtSyntaxCheck`
-	 * hook with per-type checkers.
-	 */
 	function typeCheck(content: string, version: string | undefined) {
 		const ctx: Record<string, string> = {}
 		if (version !== undefined) {
@@ -285,9 +277,7 @@ describe('checkSnbtSyntax (via typeDefinition wrapper)', () => {
 		const errors = typeCheck('{a: 0xff}', '1.21.4')
 		if (!hasError(errors, 'nbt.parser.number.radix-not-supported')) {
 			throw new Error(
-				`Expected radix-not-supported but got:\n  ${
-					errors.map(e => e.message).join('\n  ')
-				}`,
+				`Expected radix-not-supported but got:\n  ${errors.map(e => e.message).join('\n  ')}`,
 			)
 		}
 	})

@@ -107,18 +107,18 @@ export const unicodeEscape: Colorizer<UnicodeEscapeNode> = (node) => {
 	const { range, kind } = node
 	const tokens: ColorToken[] = []
 	if (kind === 'N') {
-		tokens.push(
-			ColorToken.create(Range.create(range.start, range.start + 3), 'escape'),
-		)
+		if (node.prefixRange!.start < node.prefixRange!.end) {
+			tokens.push(ColorToken.create(node.prefixRange!, 'escape'))
+		}
 		tokens.push(
 			ColorToken.create(
-				Range.create(range.start + 3, range.end - 1),
+				Range.create(node.prefixRange!.end, node.suffixRange!.start),
 				'resourceLocation',
 			),
 		)
-		tokens.push(
-			ColorToken.create(Range.create(range.end - 1, range.end), 'escape'),
-		)
+		if (node.suffixRange!.start < node.suffixRange!.end) {
+			tokens.push(ColorToken.create(node.suffixRange!, 'escape'))
+		}
 	} else {
 		// `\xHH` / `\uHHHH` / `\UHHHHHHHH`; highlight the entire escape as `escape`
 		tokens.push(

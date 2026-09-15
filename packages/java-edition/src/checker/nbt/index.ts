@@ -145,12 +145,14 @@ const checkBoolFunction: core.SyncChecker<NbtBoolFunctionNode> = (node, ctx) => 
 	if (isOldSyntax(ctx)) {
 		reportSnbtFunctionsNotSupported(node, ctx)
 	}
+	walkAndRunRegisteredCheckers(node, ctx)
 }
 
 const checkUuidFunction: core.SyncChecker<NbtUuidFunctionNode> = (node, ctx) => {
 	if (isOldSyntax(ctx)) {
 		reportSnbtFunctionsNotSupported(node, ctx)
 	}
+	walkAndRunRegisteredCheckers(node, ctx)
 }
 
 const checkLong: core.SyncChecker<NbtLongNode> = (node, ctx) => {

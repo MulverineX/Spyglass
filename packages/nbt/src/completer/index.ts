@@ -11,6 +11,7 @@ import type {
 	NbtStringNode,
 	NbtUuidFunctionNode,
 } from '../node/index.js'
+import { SNBT_FUNCTIONS } from '../parser/entry.js'
 
 const collection: core.Completer<NbtCollectionNode> = (node, ctx) => {
 	const index = core.binarySearch(node.children, ctx.offset, (n, o) => {
@@ -74,8 +75,6 @@ const compound = core.completer.record<NbtStringNode, NbtNode, NbtCompoundNode>(
 		return []
 	},
 })
-
-const SNBT_FUNCTIONS = ['bool', 'uuid'] as const
 
 const primitive: core.Completer<NbtPrimitiveNode> = (node, ctx) => {
 	const insideRange = core.Range.contains(node, ctx.offset, true)

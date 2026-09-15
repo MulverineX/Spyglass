@@ -1,4 +1,4 @@
-exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits an escape token covering the opening \`{\` of a named Unicode escape 1`] = `
+exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits all tokens in the named Unicode escape correctly 1`] = `
 [
   {
     "range": {
@@ -31,13 +31,6 @@ exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits an
   {
     "range": {
       "start": 15,
-      "end": 18
-    },
-    "type": "escape"
-  },
-  {
-    "range": {
-      "start": 18,
       "end": 29
     },
     "type": "resourceLocation"
@@ -63,13 +56,5 @@ exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits an
     },
     "type": "string"
   }
-]
-`;
-
-exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits the full \`N{name}\` token sequence: escape, resourceLocation, escape 1`] = `
-[
-  "15-18:escape",
-  "18-29:resourceLocation",
-  "29-30:escape"
 ]
 `;

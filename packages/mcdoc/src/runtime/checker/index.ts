@@ -1,5 +1,12 @@
 import { Range, Source } from '@spyglassmc/core'
-import type { CheckerContext, FullResourceLocation, SymbolQuery } from '@spyglassmc/core'
+import type {
+	CheckerContext,
+	FullResourceLocation,
+	IndexMap,
+	StringBaseNode,
+	SymbolQuery,
+	UnicodeEscapeNode,
+} from '@spyglassmc/core'
 import { localize } from '@spyglassmc/locales'
 import { TypeDefSymbolData } from '../../binder/index.js'
 import type {
@@ -25,7 +32,7 @@ import type {
 	UnionType,
 } from '../../type/index.js'
 import { McdocType, NumericRange } from '../../type/index.js'
-import { handleAttributes, shouldKeepAccordingToAttributeFilters } from '../attribute/index.js'
+import { handleAttributes, shouldKeepAccordingToAttributeFilters, StringSources } from '../attribute/index.js'
 import type { RuntimeNode, RuntimePair, RuntimeUnion, TypeConverter } from './context.js'
 import { McdocCheckerContext } from './context.js'
 import type { ErrorCondensingDefinition, McdocRuntimeError } from './error.js'
@@ -412,6 +419,46 @@ function attachTypeInfo<T>(node: CheckerTreeRuntimeNode<T>, ctx: McdocCheckerCon
 	}
 }
 
+/**
+ * Build a resolved view of `node.value` where each named Unicode escape
+ * (`\N{name}`) is replaced with its resolved character. The original `node.value`
+ * is left untouched; only the returned string + valueMap are derived. This lets
+ * the value-parser (e.g. for the `command` or `id` attributes) treat named
+ * escapes as if they were the resolved char, without mutating the AST node.
+ */
+function resolveStringValue(node: StringBaseNode): { value: string; map: IndexMap } {
+	const escapes = (node.children ?? [])
+		.filter((c): c is UnicodeEscapeNode => c.type === 'unicode_escape')
+		.filter(c => !!c.resolved)
+	const value = node.value
+	const map: IndexMap = node.valueMap.map(e => ({ inner: Range.create(e.inner.start, e.inner.end), outer: Range.create(e.outer.start, e.outer.end) }))
+	// Sort by inner start descending so splicing doesn't invalidate later indices.
+	const entries = escapes
+		.map(e => {
+			const entry = node.valueMap.find(v => v.outer.start === e.range.start && v.outer.end === e.range.end)
+			return entry ? { innerStart: entry.inner.start, innerEnd: entry.inner.end, resolved: e.resolved! } : undefined
+		})
+		.filter((e): e is { innerStart: number; innerEnd: number; resolved: string } => e !== undefined)
+		.sort((a, b) => b.innerStart - a.innerStart)
+	let resolvedValue = value
+	for (const e of entries) {
+		const shift = e.resolved.length - (e.innerEnd - e.innerStart)
+		if (shift === 0) {
+			continue
+		}
+		resolvedValue = resolvedValue.slice(0, e.innerStart) + e.resolved + resolvedValue.slice(e.innerEnd)
+		for (const m of map) {
+			if (m.inner.start >= e.innerEnd) {
+				m.inner = Range.create(m.inner.start + shift, m.inner.end + shift)
+			} else if (m.inner.end > e.innerStart && m.inner.start < e.innerEnd) {
+				// The escape's own valueMap entry collapses to the resolved char.
+				m.inner = Range.create(e.innerStart, e.innerStart + e.resolved.length)
+			}
+		}
+	}
+	return { value: resolvedValue, map }
+}
+
 function handleNodeAttachers<T>(
 	runtimeValue: RuntimeNode<T>,
 	typeDef: SimplifiedMcdocTypeNoUnion,
@@ -422,22 +469,38 @@ function handleNodeAttachers<T>(
 		return
 	}
 	handleAttributes(typeDef.attributes, ctx, (handler, config) => {
-		const parser = handler.stringParser?.(config, typeDef, ctx)
-		if (parser && stringAttacher) {
+		if (handler.stringParser && stringAttacher) {
 			stringAttacher(runtimeValue.originalNode, (node) => {
-				const src = new Source(node.value, node.valueMap)
-				const start = src.cursor
-				const child = parser(src, ctx)
+				const sources: StringSources = (() => {
+					const resolvedData = resolveStringValue(node as StringBaseNode)
+					return {
+						resolved: new Source(resolvedData.value, resolvedData.map),
+						unresolved: new Source(node.value, node.valueMap),
+					}
+				})()
+				const parser = handler.stringParser!(config, typeDef, sources, ctx)
+				if (!parser) {
+					return
+				}
+				// Default to the resolved source. Attributes that need the raw
+				// escape syntax (e.g. `command`) capture `sources.unresolved`
+				// via the closure and ignore the `src` argument. Use the
+				// returned AST node's range for trailing detection so we
+				// correctly report against whichever source the parser used.
+				const start = sources.resolved.cursor
+				const child = parser(sources.resolved, ctx)
 				if (!child) {
 					ctx.err.report(
 						localize('expected', localize('mcdoc.runtime.checker.value')),
-						Range.create(start, src.skipRemaining()),
+						Range.create(start, sources.resolved.skipRemaining()),
 					)
 					return
-				} else if (src.canRead()) {
+				}
+				const stringEnd = (node as StringBaseNode).range.end - 1
+				if (child.range.end < stringEnd) {
 					ctx.err.report(
 						localize('mcdoc.runtime.checker.trailing'),
-						Range.create(src.cursor, src.skipRemaining()),
+						Range.create(child.range.end, stringEnd),
 					)
 				}
 				node.children = [child]

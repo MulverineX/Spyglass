@@ -57,21 +57,27 @@ const scoreHolderValidator = validator.alternatives<ScoreHolderConfig>(
 export function registerMcdocAttributes(meta: core.MetaRegistry, rootTreeNode: mcf.RootTreeNode) {
 	mcdoc.runtime.registerAttribute(meta, 'command', commandValidator, {
 		// TODO: fix completer inside commands
-		stringParser: ({ slash, macro, max_length, empty, incomplete }) => {
+		stringParser: ({ slash, macro, max_length, empty, incomplete }, _typeDef, sources, _ctx) => {
+			// The command parser runs against the raw, unresolved source so the
+			// inner NBT string parser can re-emit `UnicodeEscapeNode` children
+			// for escapes inside nested SNBT strings (e.g. `\N{Acute Angle}`
+			// inside an item component). Without this, those escapes get
+			// collapsed into their resolved characters and lose their coloring.
+			const rawSrc = sources.unresolved
 			return (src, ctx) => {
 				if (macro) {
-					return mcf.macro(false)(src, ctx)
+					return mcf.macro(false)(rawSrc, ctx)
 				}
-				if ((empty && !src.canRead()) || (slash === 'chat' && src.peek() !== '/')) {
+				if ((empty && !rawSrc.canRead()) || (slash === 'chat' && rawSrc.peek() !== '/')) {
 					return core.string({
 						unquotable: { blockList: new Set(), allowEmpty: true },
-					})(src, ctx)
+					})(rawSrc, ctx)
 				}
 				const tmpCtx = { ...ctx, err: new core.ErrorReporter(ctx.err.source) }
 				const result = mcf.command(rootTreeNode, parser.argument, {
 					slash: slash === 'chat' ? 'allowed' : slash,
 					maxLength: max_length,
-				})(src, tmpCtx)
+				})(rawSrc, tmpCtx)
 				if (incomplete) {
 					tmpCtx.err.errors = tmpCtx.err.errors.filter(e => e.range.end < result.range.end)
 				}
@@ -122,7 +128,7 @@ export function registerMcdocAttributes(meta: core.MetaRegistry, rootTreeNode: m
 			}),
 	})
 	mcdoc.runtime.registerAttribute(meta, 'item_slots', () => undefined, {
-		stringParser: (_, __, ctx) => core.literal({ pool: getItemSlotsArgumentValues(ctx) }),
+		stringParser: (_, __, _sources, ctx) => core.literal({ pool: getItemSlotsArgumentValues(ctx) }),
 		stringMocker: (_, __, ctx) =>
 			core.LiteralNode.mock(ctx.offset, { pool: getItemSlotsArgumentValues(ctx) }),
 	})

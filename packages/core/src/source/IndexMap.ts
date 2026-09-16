@@ -16,6 +16,17 @@ export namespace IndexMap {
 
 		for (const pair of map) {
 			if (Range.contains(pair[from], offset)) {
+				// When inner and outer have the same length (e.g. raw
+				// escapes like `\N{...}` that the parser wrote verbatim
+				// into the value), preserve the offset within the entry.
+				// Otherwise collapse to the start of the entry (kept for
+				// length-mismatched entries like `\uHHHH` where the value
+				// holds the resolved char).
+				const innerLen = pair.inner.end - pair.inner.start
+				const outerLen = pair.outer.end - pair.outer.start
+				if (innerLen === outerLen) {
+					return pair[to].start + (offset - pair[from].start)
+				}
 				return pair[to].start
 			} else if (Range.endsBefore(pair[from], offset)) {
 				ans = offset - pair[from].end + pair[to].end

@@ -10,6 +10,25 @@ import type { McdocAttributeValidator } from './validator.js'
 
 export * as validator from './validator.js'
 
+/**
+ * The two views of a string node's value that are passed to attribute
+ * `stringParser` implementations.
+ *
+ * - `resolved`: the value with all unicode escapes replaced by their resolved
+ *   characters (e.g. `\N{Acute Angle}` → `⦟`). Use this when the attribute
+ *   needs the "what the game actually sees" value (resource location lookups,
+ *   numeric parsing, etc.).
+ * - `unresolved`: the value as it was parsed from the source, with unicode
+ *   escape sequences still present as raw text. Use this when the value is
+ *   going to be re-parsed recursively by a syntax-aware parser (e.g. the
+ *   `command` attribute, where the inner NBT string parser needs to see the
+ *   raw escape syntax to re-emit `UnicodeEscapeNode` children).
+ */
+export interface StringSources {
+	resolved: core.Source
+	unresolved: core.Source
+}
+
 export interface McdocAttribute<C = unknown> {
 	checkInferred?: <T>(
 		config: C,
@@ -30,6 +49,7 @@ export interface McdocAttribute<C = unknown> {
 	stringParser?: <T>(
 		config: C,
 		typeDef: SimplifiedMcdocTypeNoUnion,
+		sources: StringSources,
 		ctx: McdocCheckerContext<T>,
 	) => core.InfallibleParser<core.AstNode | undefined> | undefined
 	checker?: <T>(

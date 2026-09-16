@@ -31,6 +31,11 @@ const entry: core.Checker<mcf.McfunctionNode> = (node, ctx) => {
 }
 
 export const command: core.Checker<mcf.CommandNode> = (node, ctx) => {
+	console.log(`[DEBUG] command checker ENTRY children.length=${node.children.length}`)
+	for (let i = 0; i < node.children.length; i += 1) {
+		const child = node.children[i]
+		console.log(`[DEBUG] command checker child i=${i} type=${child.children[0]?.type} path=${JSON.stringify(child.path)}`)
+	}
 	rootCommand(node.children, 0, ctx)
 }
 
@@ -55,8 +60,17 @@ const rootCommand = (
 	index: number,
 	ctx: core.CheckerContext,
 ) => {
+	console.log(`[DEBUG] rootCommand ENTRY nodes.length=${nodes.length}`)
 	for (let i = 0; i < nodes.length; i += 1) {
 		const node = nodes[i].children[0]
+		const ancestors: string[] = []
+		let p = node.parent
+		while (p && ancestors.length < 6) {
+			ancestors.push(p.type)
+			p = p.parent
+		}
+		const isItemStack = ItemStackNode.is(node)
+		console.log(`[DEBUG] rootCommand iter i=${i} nodeType=${node.type} ancestors=${JSON.stringify(ancestors)} isItemStack=${isItemStack} path=${JSON.stringify(nodes[i].path)}`)
 		if (BlockNode.is(node)) {
 			block(node, ctx)
 		} else if (EntityNode.is(node)) {
@@ -138,6 +152,7 @@ const itemPredicate: core.SyncChecker<ItemPredicateNode> = (node, ctx) => {
 
 const itemStack: core.SyncChecker<ItemStackNode> = (node, ctx) => {
 	const itemId = core.ResourceLocationNode.toString(node.id, 'full')
+	console.log(`[DEBUG] itemStack checker called for itemId=${itemId} hasComponents=${!!node.components} hasNbt=${!!node.nbt}`)
 	if (node.nbt) {
 		nbt.checker.index('minecraft:item', itemId)(node.nbt, ctx)
 	}

@@ -32,7 +32,7 @@ const translationKeyValidator = validator.alternatives(
 
 export function registerMcdocAttributes(meta: core.MetaRegistry) {
 	mcdoc.runtime.registerAttribute(meta, 'criterion', criterionValidator, {
-		stringParser: (config, _, ctx) => {
+		stringParser: (config, _, _sources, ctx) => {
 			const parts = dissectUri(ctx.doc.uri, ctx)
 			if (!parts || !parts.ok || parts.category !== 'advancement') {
 				return undefined
@@ -57,7 +57,7 @@ export function registerMcdocAttributes(meta: core.MetaRegistry) {
 		},
 	})
 	mcdoc.runtime.registerAttribute(meta, 'texture_slot', textureSlotValidator, {
-		stringParser: (config, _, ctx) => {
+		stringParser: (config, _, _sources, ctx) => {
 			return textureSlotParser(config.kind)
 		},
 		stringMocker: (config, _, ctx) => {
@@ -70,7 +70,7 @@ export function registerMcdocAttributes(meta: core.MetaRegistry) {
 		},
 	})
 	mcdoc.runtime.registerAttribute(meta, 'translation_key', translationKeyValidator, {
-		stringParser: (config, _, ctx) => {
+		stringParser: (config, _, _sources, ctx) => {
 			return core.symbol({
 				category: 'translation_key',
 				usageType: config.definition ? 'definition' : 'reference',

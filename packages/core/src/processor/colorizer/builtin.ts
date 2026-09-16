@@ -79,16 +79,18 @@ export const resourceLocation: Colorizer<ResourceLocationBaseNode> = (node, _ctx
 
 export const string: Colorizer<StringBaseNode> = (node, ctx) => {
 	if (node.children) {
-		// Collect tokens from every child that owns a colorizer.
-		// `UnicodeEscapeNode` siblings need their own multi-segment
-		// highlighting, and the value-parser result (when present)
-		// gets its own tokens too.
+		// Collect tokens from every child. Children with their own colorizer
+		// (e.g. `UnicodeEscapeNode`) get highlighted directly. Children without
+		// one (e.g. the value-parser result, like `mcfunction:command`) are
+		// traversed with the fallback colorizer so their colorizer-bearing
+		// descendants still contribute tokens.
 		const tokens: ColorToken[] = []
 		for (const child of node.children) {
-			if (!ctx.meta.hasColorizer(child.type)) {
-				continue
+			if (ctx.meta.hasColorizer(child.type)) {
+				tokens.push(...ctx.meta.getColorizer(child.type)(child, ctx))
+			} else if (child.children?.length) {
+				tokens.push(...fallback(child, ctx))
 			}
-			tokens.push(...ctx.meta.getColorizer(child.type)(child, ctx))
 		}
 		if (tokens.length) {
 			// TODO: Fill the gap between the last token and the ending quote with errors.

@@ -183,7 +183,7 @@ export function registerBuiltinAttributes(meta: core.MetaRegistry) {
 			}
 			return typeDef
 		},
-		stringParser: (config, typeDef, ctx) => {
+		stringParser: (config, typeDef, _sources, ctx) => {
 			const options = getResourceLocationOptions(config, ctx.requireCanonical, ctx, typeDef)
 			if (!options) {
 				return

@@ -242,7 +242,6 @@ function finalizeEscape(
 		child.codepoint = codepoint
 		child.name = inner
 		child.hover = buildEscapeHover(codepoint, inner)
-		rewriteValue(node, escapeRange, child.resolved)
 		return
 	}
 	const hex = raw.slice(2)
@@ -255,23 +254,6 @@ function finalizeEscape(
 	child.resolved = String.fromCodePoint(codepoint)
 	child.name = lookupNameByCodepoint(codepoint, ctx)
 	child.hover = buildEscapeHover(codepoint, child.name)
-}
-
-function rewriteValue(
-	node: StringBaseNode,
-	escapeRange: Range,
-	resolved: string,
-): void {
-	const entry = node.valueMap.find((e) =>
-		e.outer.start === escapeRange.start && e.outer.end === escapeRange.end
-	)
-	if (!entry) {
-		return
-	}
-	const start = entry.inner.start
-	const end = entry.inner.end
-	node.value = node.value.slice(0, start) + resolved + node.value.slice(end)
-	entry.inner = Range.create(start, start + resolved.length)
 }
 
 /**

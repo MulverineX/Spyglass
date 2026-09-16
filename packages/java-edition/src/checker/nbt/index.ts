@@ -188,6 +188,10 @@ const checkDouble: core.SyncChecker<NbtDoubleNode> = (node, ctx) => {
 }
 
 const checkString: core.SyncChecker<NbtStringNode> = (node, ctx) => {
+	console.error(
+		`[spyglass-debug-check-string] type=${node.type} value=${JSON.stringify(node.value)} `
+		+ `quote=${JSON.stringify(node.quote)} parent=${node.parent?.type ?? '<none>'}`,
+	)
 	unicodeEscapes(node, ctx)
 	if (isOldSyntax(ctx) || node.quote) {
 		return

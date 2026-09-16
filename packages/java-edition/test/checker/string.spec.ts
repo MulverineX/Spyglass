@@ -275,7 +275,7 @@ describe('string checker', () => {
 			const run = runChecker(text, baseOptions())
 			assert.deepEqual(run.parseErrors.map((e) => e.message), [])
 			assert.deepEqual(run.checkErrors.map((e) => e.message), [])
-			assert.equal(run.node.value, value)
+			assert.equal(onlyEscape(run).resolved, value)
 		}
 
 		it('resolves a single-word name', () => resolvesTo('"\\N{snowman}"', '☃'))
@@ -341,22 +341,25 @@ describe('string checker', () => {
 	})
 
 	describe('\\N{block-name HEX} escapes', () => {
+		// Same caveat as `\N{…} named escapes`: `node.value` is the raw source
+		// (`\\N{Hangul Syllables AC00}`); the resolved char lives on the
+		// escape's `resolved` field after the checker runs.
 		it('resolves a codepoint inside the block', () => {
 			const run = runChecker('"\\N{Hangul Syllables D7A2}"', baseOptions())
 			assert.deepEqual(run.checkErrors.map((e) => e.message), [])
-			assert.equal(run.node.value, '힢')
+			assert.equal(onlyEscape(run).resolved, '힢')
 		})
 
 		it('accepts lowercase hex', () => {
 			const run = runChecker('"\\N{Hangul Syllables d7a3}"', baseOptions())
 			assert.deepEqual(run.checkErrors.map((e) => e.message), [])
-			assert.equal(run.node.value, '힣')
+			assert.equal(onlyEscape(run).resolved, '힣')
 		})
 
 		it('matches the plural block form for First/Last pairs', () => {
 			const run = runChecker('"\\N{Hangul Syllables AC00}"', baseOptions())
 			assert.deepEqual(run.checkErrors.map((e) => e.message), [])
-			assert.equal(run.node.value, '가')
+			assert.equal(onlyEscape(run).resolved, '가')
 		})
 
 		it('rejects a block with no First/Last markers', () => {

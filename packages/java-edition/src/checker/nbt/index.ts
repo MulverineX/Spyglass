@@ -192,6 +192,9 @@ const checkString: core.SyncChecker<NbtStringNode> = (node, ctx) => {
 	if (isOldSyntax(ctx) || node.quote) {
 		return
 	}
+	if (nbt.NbtPathKeyNode.is(node.parent)) {
+		return
+	}
 	// Source-text heuristics - `ctx.src.slice(node.range)` would be wrong
 	// when the string came from a JSON-string attach.
 	const v = node.value

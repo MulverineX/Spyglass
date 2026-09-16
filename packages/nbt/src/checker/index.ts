@@ -199,7 +199,11 @@ export function typeDefinition(
 					)(error)
 				},
 				attachTypeInfo: (node, definition, desc = '') => {
-					console.log(`[DEBUG] NBT attachTypeInfo called for node type=${node.type} range=${node.range.start}-${node.range.end} definition=${JSON.stringify(definition).slice(0, 80)}`)
+					console.log(
+						`[DEBUG] NBT attachTypeInfo called for node type=${node.type} range=${node.range.start}-${node.range.end} definition=${
+							JSON.stringify(definition).slice(0, 80)
+						}`,
+					)
 					node.typeDef = definition
 					node.requireCanonical = options.isPredicate
 					// TODO: improve hover info
@@ -256,7 +260,10 @@ export function typeDefinition(
 					if (!NbtStringNode.is(node)) {
 						return
 					}
-					console.log(`[DEBUG] NBT stringAttacher called for NbtStringNode range=${node.range.start}-${node.range.end} parentType=${node.parent?.type} hasChildren=${!!node.children}`)
+					console.log(
+						`[DEBUG] NBT stringAttacher called for NbtStringNode range=${node.range.start}-${node.range.end} parentType=${node.parent?.type} hasChildren=${!!node
+							.children}`,
+					)
 					attacher(node)
 					if (node.children) {
 						core.AstNode.setParents(node)

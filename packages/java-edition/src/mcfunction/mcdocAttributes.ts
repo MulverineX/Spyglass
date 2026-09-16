@@ -128,7 +128,8 @@ export function registerMcdocAttributes(meta: core.MetaRegistry, rootTreeNode: m
 			}),
 	})
 	mcdoc.runtime.registerAttribute(meta, 'item_slots', () => undefined, {
-		stringParser: (_, __, _sources, ctx) => core.literal({ pool: getItemSlotsArgumentValues(ctx) }),
+		stringParser: (_, __, _sources, ctx) =>
+			core.literal({ pool: getItemSlotsArgumentValues(ctx) }),
 		stringMocker: (_, __, ctx) =>
 			core.LiteralNode.mock(ctx.offset, { pool: getItemSlotsArgumentValues(ctx) }),
 	})

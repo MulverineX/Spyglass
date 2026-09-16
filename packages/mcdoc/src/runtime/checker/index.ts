@@ -32,7 +32,8 @@ import type {
 	UnionType,
 } from '../../type/index.js'
 import { McdocType, NumericRange } from '../../type/index.js'
-import { handleAttributes, shouldKeepAccordingToAttributeFilters, StringSources } from '../attribute/index.js'
+import type { StringSources } from '../attribute/index.js'
+import { handleAttributes, shouldKeepAccordingToAttributeFilters } from '../attribute/index.js'
 import type { RuntimeNode, RuntimePair, RuntimeUnion, TypeConverter } from './context.js'
 import { McdocCheckerContext } from './context.js'
 import type { ErrorCondensingDefinition, McdocRuntimeError } from './error.js'
@@ -431,14 +432,23 @@ function resolveStringValue(node: StringBaseNode): { value: string; map: IndexMa
 		.filter((c): c is UnicodeEscapeNode => c.type === 'unicode_escape')
 		.filter(c => !!c.resolved)
 	const value = node.value
-	const map: IndexMap = node.valueMap.map(e => ({ inner: Range.create(e.inner.start, e.inner.end), outer: Range.create(e.outer.start, e.outer.end) }))
+	const map: IndexMap = node.valueMap.map(e => ({
+		inner: Range.create(e.inner.start, e.inner.end),
+		outer: Range.create(e.outer.start, e.outer.end),
+	}))
 	// Sort by inner start descending so splicing doesn't invalidate later indices.
 	const entries = escapes
 		.map(e => {
-			const entry = node.valueMap.find(v => v.outer.start === e.range.start && v.outer.end === e.range.end)
-			return entry ? { innerStart: entry.inner.start, innerEnd: entry.inner.end, resolved: e.resolved! } : undefined
+			const entry = node.valueMap.find(v =>
+				v.outer.start === e.range.start && v.outer.end === e.range.end
+			)
+			return entry
+				? { innerStart: entry.inner.start, innerEnd: entry.inner.end, resolved: e.resolved! }
+				: undefined
 		})
-		.filter((e): e is { innerStart: number; innerEnd: number; resolved: string } => e !== undefined)
+		.filter((e): e is { innerStart: number; innerEnd: number; resolved: string } =>
+			e !== undefined
+		)
 		.sort((a, b) => b.innerStart - a.innerStart)
 	let resolvedValue = value
 	for (const e of entries) {
@@ -446,7 +456,8 @@ function resolveStringValue(node: StringBaseNode): { value: string; map: IndexMa
 		if (shift === 0) {
 			continue
 		}
-		resolvedValue = resolvedValue.slice(0, e.innerStart) + e.resolved + resolvedValue.slice(e.innerEnd)
+		resolvedValue = resolvedValue.slice(0, e.innerStart) + e.resolved
+			+ resolvedValue.slice(e.innerEnd)
 		for (const m of map) {
 			if (m.inner.start >= e.innerEnd) {
 				m.inner = Range.create(m.inner.start + shift, m.inner.end + shift)

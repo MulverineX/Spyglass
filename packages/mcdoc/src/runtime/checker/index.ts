@@ -514,22 +514,7 @@ function handleNodeAttachers<T>(
 						Range.create(child.range.end, stringEnd),
 					)
 				}
-				console.log(
-					`[DEBUG] mcdoc runtime checker attribute stringAttacher child: ${child.type} ${
-						child.children?.[0]?.type
-					}, existing: ${node.type} ${JSON.stringify(node.children?.map((c) => c.type))}`,
-				)
-				// node.children = [child]
-				if (node.children === undefined) {
-					node.children = []
-				}
-				node.children.unshift(child)
-				const foo = [node.children?.[0].type, node.children?.[1].type]
-				console.log(
-					`[DEBUG] mcdoc runtime checker attribute stringAttacher children now: ${
-						JSON.stringify(foo)
-					} ${node.children.length}`,
-				)
+				node.children = [child]
 			})
 		}
 		const checker = handler.checker?.(config, runtimeValue.inferredType, ctx)

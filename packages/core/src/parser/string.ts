@@ -124,12 +124,6 @@ export function string(options: StringOptions): InfallibleParser<StringNode> {
 							const range = charsLeft > 0
 								? Range.create(src, hexEnd)
 								: Range.create(cStart, cStart + 2)
-							Error.stackTraceLimit = 20
-							console.error(
-								`[ERR:core.string] c2=${c2} range=${
-									JSON.stringify(range)
-								} cStart=${cStart} charsLeft=${charsLeft}\n${new Error().stack}`,
-							)
 							ctx.err.report(
 								localize('parser.string.illegal-unicode-escape'),
 								range,

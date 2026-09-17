@@ -31,13 +31,6 @@ exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits al
   {
     "range": {
       "start": 15,
-      "end": 18
-    },
-    "type": "escape"
-  },
-  {
-    "range": {
-      "start": 18,
       "end": 29
     },
     "type": "resourceLocation"

@@ -57,32 +57,21 @@ const scoreHolderValidator = validator.alternatives<ScoreHolderConfig>(
 export function registerMcdocAttributes(meta: core.MetaRegistry, rootTreeNode: mcf.RootTreeNode) {
 	mcdoc.runtime.registerAttribute(meta, 'command', commandValidator, {
 		// TODO: fix completer inside commands
-		stringParser: ({ slash, macro, max_length, empty, incomplete }, _typeDef, sources, _ctx) => {
-			// The command parser runs against the raw, unresolved source so the
-			// inner NBT string parser can re-emit `UnicodeEscapeNode` children
-			// for escapes inside nested SNBT strings (e.g. `\N{Acute Angle}`
-			// inside an item component). Without this, those escapes get
-			// collapsed into their resolved characters and lose their coloring.
-			const rawSrc = sources.unresolved
-			console.error(
-				`[cmd-attr] rawSrc.string=${JSON.stringify(rawSrc.string.slice(0, 50))}… rawSrc.cursor=${rawSrc.cursor} indexMapLen=${(rawSrc as any).indexMap?.length}`,
-			)
+		stringParser: ({ slash, macro, max_length, empty, incomplete }) => {
 			return (src, ctx) => {
 				if (macro) {
-					return mcf.macro(false)(rawSrc, ctx)
+					return mcf.macro(false)(src, ctx)
 				}
-				if ((empty && !rawSrc.canRead()) || (slash === 'chat' && rawSrc.peek() !== '/')) {
+				if ((empty && !src.canRead()) || (slash === 'chat' && src.peek() !== '/')) {
 					return core.string({
 						unquotable: { blockList: new Set(), allowEmpty: true },
-					})(rawSrc, ctx)
+					})(src, ctx)
 				}
 				const tmpCtx = { ...ctx, err: new core.ErrorReporter(ctx.err.source) }
-				console.error(`[cmd-attr] running mcf.command rawSrc.string=${JSON.stringify(rawSrc.string)} rawSrc.cursor=${rawSrc.cursor}`)
 				const result = mcf.command(rootTreeNode, parser.argument, {
 					slash: slash === 'chat' ? 'allowed' : slash,
 					maxLength: max_length,
-				})(rawSrc, tmpCtx)
-				console.error(`[cmd-attr] mcf.command result.range=${JSON.stringify(result.range)} errors=${JSON.stringify(tmpCtx.err.errors.map(e => ({ msg: e.message, range: e.range })))}`)
+				})(src, tmpCtx)
 				if (incomplete) {
 					tmpCtx.err.errors = tmpCtx.err.errors.filter(e => e.range.end < result.range.end)
 				}
@@ -133,8 +122,7 @@ export function registerMcdocAttributes(meta: core.MetaRegistry, rootTreeNode: m
 			}),
 	})
 	mcdoc.runtime.registerAttribute(meta, 'item_slots', () => undefined, {
-		stringParser: (_, __, _sources, ctx) =>
-			core.literal({ pool: getItemSlotsArgumentValues(ctx) }),
+		stringParser: (_, __, ctx) => core.literal({ pool: getItemSlotsArgumentValues(ctx) }),
 		stringMocker: (_, __, ctx) =>
 			core.LiteralNode.mock(ctx.offset, { pool: getItemSlotsArgumentValues(ctx) }),
 	})

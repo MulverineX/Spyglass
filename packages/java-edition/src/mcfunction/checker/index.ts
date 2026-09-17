@@ -57,12 +57,6 @@ const rootCommand = (
 ) => {
 	for (let i = 0; i < nodes.length; i += 1) {
 		const node = nodes[i].children[0]
-		const ancestors: string[] = []
-		let p = node.parent
-		while (p && ancestors.length < 6) {
-			ancestors.push(p.type)
-			p = p.parent
-		}
 		if (BlockNode.is(node)) {
 			block(node, ctx)
 		} else if (EntityNode.is(node)) {

@@ -1,4 +1,11 @@
-import type { CheckerContext, FullResourceLocation, SymbolQuery } from '@spyglassmc/core'
+import {
+	type CheckerContext,
+	type FullResourceLocation,
+	Range,
+	Source,
+	type SymbolQuery,
+} from '@spyglassmc/core'
+import { localize } from '@spyglassmc/locales'
 import { TypeDefSymbolData } from '../../binder/index.js'
 import type {
 	ConcreteType,
@@ -420,9 +427,25 @@ function handleNodeAttachers<T>(
 		return
 	}
 	handleAttributes(typeDef.attributes, ctx, (handler, config) => {
-		if (handler.stringParser && stringAttacher) {
-			stringAttacher(runtimeValue.originalNode, () => {
-				handler.stringParser!(config, typeDef, ctx)
+		const parser = handler.stringParser?.(config, typeDef, ctx)
+		if (parser && stringAttacher) {
+			stringAttacher(runtimeValue.originalNode, (node) => {
+				const src = new Source(node.value, node.valueMap)
+				const start = src.cursor
+				const child = parser(src, ctx)
+				if (!child) {
+					ctx.err.report(
+						localize('expected', localize('mcdoc.runtime.checker.value')),
+						Range.create(start, src.skipRemaining()),
+					)
+					return
+				} else if (src.canRead()) {
+					ctx.err.report(
+						localize('mcdoc.runtime.checker.trailing'),
+						Range.create(src.cursor, src.skipRemaining()),
+					)
+				}
+				node.children = [child]
 			})
 		}
 		const checker = handler.checker?.(config, runtimeValue.inferredType, ctx)

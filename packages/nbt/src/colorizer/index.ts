@@ -67,14 +67,8 @@ export function register(meta: MetaRegistry) {
 	meta.registerColorizer<NbtLongNode>('nbt:long', core.colorizer.number)
 	meta.registerColorizer<NbtFloatNode>('nbt:float', core.colorizer.number)
 	meta.registerColorizer<NbtDoubleNode>('nbt:double', core.colorizer.number)
-	meta.registerColorizer<NbtBoolFunctionNode>(
-		'nbt:bool_function',
-		snbtFunction,
-	)
-	meta.registerColorizer<NbtUuidFunctionNode>(
-		'nbt:uuid_function',
-		snbtFunction,
-	)
+	meta.registerColorizer<NbtBoolFunctionNode>('nbt:bool_function', snbtFunction)
+	meta.registerColorizer<NbtUuidFunctionNode>('nbt:uuid_function', snbtFunction)
 	meta.registerColorizer<NbtCompoundNode>('nbt:compound', compound)
 	meta.registerColorizer<TypedNbtNode>('nbt:typed', typed)
 }

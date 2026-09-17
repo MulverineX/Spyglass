@@ -101,6 +101,9 @@ export function string(options: StringOptions): InfallibleParser<StringNode> {
 									outer: Range.create(cStart, src),
 								})
 								ans.value += c2
+								pushChild(
+									makeEscapeChild(cStart, src.cursor, raw, c2),
+								)
 								cStart = src.cursor
 								continue
 							}
@@ -133,6 +136,9 @@ export function string(options: StringOptions): InfallibleParser<StringNode> {
 								outer: Range.create(cStart, src),
 							})
 							ans.value += c2
+							pushChild(
+								makeEscapeChild(cStart, src.cursor, src.sliceToCursor(cStart), c2),
+							)
 						}
 					} else if (c2 === 'N') {
 						if (!src.trySkip('{')) {

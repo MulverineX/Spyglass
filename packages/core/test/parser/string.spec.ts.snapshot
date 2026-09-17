@@ -747,7 +747,20 @@ exports[`string() > quoted_string with unicode escape and allowUnknown > parses 
         }
       }
     ],
-    "quote": "\\""
+    "quote": "\\"",
+    "children": [
+      {
+        "type": "unicode_escape",
+        "kind": "u",
+        "range": {
+          "start": 1,
+          "end": 3
+        },
+        "raw": "\\\\u",
+        "resolved": "",
+        "codepoint": 0
+      }
+    ]
   },
   "errors": [
     {

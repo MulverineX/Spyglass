@@ -79,6 +79,14 @@ export const resourceLocation: Colorizer<ResourceLocationBaseNode> = (node, _ctx
 
 export const string: Colorizer<StringBaseNode> = (node, ctx) => {
 	if (node.children) {
+		// Ranges occupied by unicode escape children take precedence: any tokens
+		// emitted by other children (e.g. the value-parser result, which covers
+		// the resolved char at the same source position) must not override the
+		// escape's semantic token.
+		const escapeRanges = node.children
+			.filter(c => c.type === 'unicode_escape')
+			.map(c => c.range)
+		const overlapsEscape = (r: Range) => escapeRanges.some(er => Range.intersects(er, r))
 		// Collect tokens from every child. Children with their own colorizer
 		// (e.g. `UnicodeEscapeNode`) get highlighted directly. Children without
 		// one (e.g. the value-parser result, like `mcfunction:command`) are
@@ -89,12 +97,20 @@ export const string: Colorizer<StringBaseNode> = (node, ctx) => {
 			if (ctx.meta.hasColorizer(child.type)) {
 				tokens.push(...ctx.meta.getColorizer(child.type)(child, ctx))
 			} else if (child.children?.length) {
-				tokens.push(...fallback(child, ctx))
+				for (const token of fallback(child, ctx)) {
+					if (!overlapsEscape(token.range)) {
+						tokens.push(token)
+					}
+				}
 			}
 		}
 		if (tokens.length) {
 			// TODO: Fill the gap between the last token and the ending quote with errors.
-			return ColorToken.fillGap(tokens, node.range, node.options.colorTokenType ?? 'string')
+			return ColorToken.fillGap(
+				tokens.slice().sort((a, b) => a.range.start - b.range.start),
+				node.range,
+				node.options.colorTokenType ?? 'string',
+			)
 		}
 	}
 	return [ColorToken.create(node, node.options.colorTokenType ?? 'string')]

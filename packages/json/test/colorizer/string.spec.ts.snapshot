@@ -3,27 +3,6 @@ exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits al
   {
     "range": {
       "start": 7,
-      "end": 9
-    },
-    "type": "string"
-  },
-  {
-    "range": {
-      "start": 9,
-      "end": 13
-    },
-    "type": "property"
-  },
-  {
-    "range": {
-      "start": 13,
-      "end": 14
-    },
-    "type": "punctuation"
-  },
-  {
-    "range": {
-      "start": 14,
       "end": 15
     },
     "type": "string"
@@ -31,6 +10,13 @@ exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits al
   {
     "range": {
       "start": 15,
+      "end": 18
+    },
+    "type": "escape"
+  },
+  {
+    "range": {
+      "start": 18,
       "end": 29
     },
     "type": "resourceLocation"
@@ -45,13 +31,6 @@ exports[`json:string colorizer after mcdoc runtime attaches nbt:typed > emits al
   {
     "range": {
       "start": 30,
-      "end": 31
-    },
-    "type": "string"
-  },
-  {
-    "range": {
-      "start": 31,
       "end": 33
     },
     "type": "string"

@@ -124,15 +124,54 @@ export function string(options: StringOptions): InfallibleParser<StringNode> {
 							const range = charsLeft > 0
 								? Range.create(src, hexEnd)
 								: Range.create(cStart, cStart + 2)
+							Error.stackTraceLimit = 20
+							console.error(
+								`[ERR:core.string] c2=${c2} range=${
+									JSON.stringify(range)
+								} cStart=${cStart} charsLeft=${charsLeft}\n${new Error().stack}`,
+							)
+							/**
+							 *
+							 *
+							 * [ERR:core.string] c2=x range={"start":301,"end":303} cStart=299 charsLeft=14
+Error
+	at <anonymous> (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/string.ts:131:54)
+	...
+    at <anonymous> (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/util.ts:240:50)
+    at entry2 (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/nbt/src/parser/entry.ts:26:5)
+    at attempt (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/util.ts:53:17)
+    at <anonymous> (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/record.ts:90:6)
+    at <anonymous> (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/util.ts:365:18)
+    at compound2 (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/nbt/src/parser/compound.ts:23:5)
+							 *
+							 * [ERR:core.string] c2=x range={"start":301,"end":302} cStart=299 charsLeft=1
+Error
+	at <anonymous> (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/string.ts:131:54)
+	...
+    at <anonymous> (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/util.ts:240:50)
+    at Object.entry2 (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/nbt/src/parser/entry.ts:26:5)
+    at components (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/java-edition/src/mcfunction/parser/argument.ts:1778:29)
+    at attempt (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/util.ts:53:17)
+    at <anonymous> (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/util.ts:240:50)
+    at attempt3 (/var/home/mulverine/Workspaces/Spyglass/Spyglass/packages/core/src/parser/util.ts:53:17)
+							 *
+							 *
+							 * The first one is incorrect, the second one is correct
+							 *
+							 *
+							 */
 							ctx.err.report(
 								localize('parser.string.illegal-unicode-escape'),
 								range,
 							)
 							ans.valueMap.push({
-								inner: Range.create(ans.value.length, ans.value.length + 1),
+								inner: Range.create(ans.value.length, ans.value.length + 2),
 								outer: Range.create(cStart, src),
 							})
-							ans.value += c2
+							ans.value += `\\${c2}`
+							pushChild(
+								makeEscapeChild(cStart, src.cursor, `\\${c2}`, c2 as UnicodeEscapeKind),
+							)
 						}
 					} else if (c2 === 'N') {
 						if (!src.trySkip('{')) {

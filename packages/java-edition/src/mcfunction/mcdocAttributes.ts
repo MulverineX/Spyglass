@@ -64,6 +64,9 @@ export function registerMcdocAttributes(meta: core.MetaRegistry, rootTreeNode: m
 			// inside an item component). Without this, those escapes get
 			// collapsed into their resolved characters and lose their coloring.
 			const rawSrc = sources.unresolved
+			console.error(
+				`[cmd-attr] rawSrc.string=${JSON.stringify(rawSrc.string.slice(0, 50))}… rawSrc.cursor=${rawSrc.cursor} indexMapLen=${(rawSrc as any).indexMap?.length}`,
+			)
 			return (src, ctx) => {
 				if (macro) {
 					return mcf.macro(false)(rawSrc, ctx)
@@ -74,10 +77,12 @@ export function registerMcdocAttributes(meta: core.MetaRegistry, rootTreeNode: m
 					})(rawSrc, ctx)
 				}
 				const tmpCtx = { ...ctx, err: new core.ErrorReporter(ctx.err.source) }
+				console.error(`[cmd-attr] running mcf.command rawSrc.string=${JSON.stringify(rawSrc.string)} rawSrc.cursor=${rawSrc.cursor}`)
 				const result = mcf.command(rootTreeNode, parser.argument, {
 					slash: slash === 'chat' ? 'allowed' : slash,
 					maxLength: max_length,
 				})(rawSrc, tmpCtx)
+				console.error(`[cmd-attr] mcf.command result.range=${JSON.stringify(result.range)} errors=${JSON.stringify(tmpCtx.err.errors.map(e => ({ msg: e.message, range: e.range })))}`)
 				if (incomplete) {
 					tmpCtx.err.errors = tmpCtx.err.errors.filter(e => e.range.end < result.range.end)
 				}

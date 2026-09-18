@@ -56,7 +56,7 @@ function runUnderscorePass(root: core.AstNode, ctx: core.CheckerContext): void {
 		ctx.err.report(
 			localize('nbt.parser.number.underscore-not-supported'),
 			first,
-			core.ErrorSeverity.Information,
+			core.ErrorSeverity.Warning,
 		)
 	}
 }
@@ -96,7 +96,7 @@ function checkRadixAndUnderscore(
 		ctx.err.report(
 			localize('nbt.parser.number.underscore-not-supported'),
 			node,
-			core.ErrorSeverity.Information,
+			core.ErrorSeverity.Warning,
 		)
 	}
 }

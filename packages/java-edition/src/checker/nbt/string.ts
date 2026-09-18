@@ -226,7 +226,10 @@ function finalizeEscape(
 	// wrote the resolved char into `value` and onto the child. Look up the
 	// Unicode name for the resolved codepoint.
 	if (raw.length === 1) {
-		const codepoint = child.resolved ? child.resolved.codePointAt(0)! : raw.codePointAt(0)!
+		const codepoint = (child.resolved ?? raw).codePointAt(0)!
+		if (raw === '\\' || raw === '"' || raw === "'") {
+			return
+		}
 		child.codepoint = codepoint
 		child.name = lookupNameByCodepoint(codepoint, ctx)
 		child.hover = buildEscapeHover(codepoint, child.name)

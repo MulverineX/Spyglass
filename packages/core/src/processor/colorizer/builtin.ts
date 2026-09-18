@@ -78,42 +78,63 @@ export const resourceLocation: Colorizer<ResourceLocationBaseNode> = (node, _ctx
 }
 
 export const string: Colorizer<StringBaseNode> = (node, ctx) => {
-	if (node.children) {
-		// Ranges occupied by unicode escape children take precedence: any tokens
-		// emitted by other children (e.g. the value-parser result, which covers
-		// the resolved char at the same source position) must not override the
-		// escape's semantic token.
-		const escapeRanges = node.children
-			.filter(c => c.type === 'unicode_escape')
-			.map(c => c.range)
-		const overlapsEscape = (r: Range) => escapeRanges.some(er => Range.intersects(er, r))
-		// Collect tokens from every child. Children with their own colorizer
-		// (e.g. `UnicodeEscapeNode`) get highlighted directly. Children without
-		// one (e.g. the value-parser result, like `mcfunction:command`) are
-		// traversed with the fallback colorizer so their colorizer-bearing
-		// descendants still contribute tokens.
-		const tokens: ColorToken[] = []
-		for (const child of node.children) {
-			if (ctx.meta.hasColorizer(child.type)) {
-				tokens.push(...ctx.meta.getColorizer(child.type)(child, ctx))
-			} else if (child.children?.length) {
-				for (const token of fallback(child, ctx)) {
-					if (!overlapsEscape(token.range)) {
-						tokens.push(token)
-					}
+	if (!node.children) {
+		return [ColorToken.create(node, node.options.colorTokenType ?? 'string')]
+	}
+
+	const escapeRanges = node.children
+		.filter(c => c.type === 'unicode_escape')
+
+	const tokens: ColorToken[] = []
+	for (const child of node.children) {
+		const emitted = ctx.meta.hasColorizer(child.type)
+			? ctx.meta.getColorizer(child.type)(child, ctx)
+			: child.children?.length
+			? fallback(child, ctx)
+			: []
+		let tail = 0
+		const insert = (piece: ColorToken): void => {
+			while (tail < tokens.length && tokens[tail].range.start < piece.range.start) {
+				tail++
+			}
+			tokens.splice(tail, 0, piece)
+			tail++
+		}
+		for (const t of emitted) {
+			if (child.type === 'unicode_escape') {
+				insert(t)
+				continue
+			}
+			// Clip around escape ranges; emit the disjoint pieces in source order.
+			let cursor = t.range.start
+			const end = t.range.end
+			for (const { range } of escapeRanges) {
+				if (range.end <= cursor || range.start >= end) {
+					continue
+				}
+				if (range.start > cursor) {
+					insert({ ...t, range: Range.create(cursor, range.start) })
+				}
+				cursor = Math.max(cursor, range.end)
+				if (cursor >= end) {
+					break
 				}
 			}
-		}
-		if (tokens.length) {
-			// TODO: Fill the gap between the last token and the ending quote with errors.
-			return ColorToken.fillGap(
-				tokens.slice().sort((a, b) => a.range.start - b.range.start),
-				node.range,
-				node.options.colorTokenType ?? 'string',
-			)
+			if (cursor < end) {
+				insert({ ...t, range: Range.create(cursor, end) })
+			}
 		}
 	}
-	return [ColorToken.create(node, node.options.colorTokenType ?? 'string')]
+
+	if (!tokens.length) {
+		return [ColorToken.create(node, node.options.colorTokenType ?? 'string')]
+	}
+
+	return ColorToken.fillGap(
+		tokens,
+		node.range,
+		node.options.colorTokenType ?? 'string',
+	)
 }
 
 export const symbol: Colorizer<SymbolBaseNode> = (node) => {

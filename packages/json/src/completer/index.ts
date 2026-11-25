@@ -1,12 +1,13 @@
 import * as core from '@spyglassmc/core'
 import * as mcdoc from '@spyglassmc/mcdoc'
+import { getChildren, inferType } from '../checker/index.js'
 import type {
 	JsonArrayNode,
-	JsonNode,
 	JsonObjectNode,
 	JsonPrimitiveNode,
 	JsonStringNode,
 } from '../node/index.js'
+import { JsonNode } from '../node/index.js'
 
 const array: core.Completer<JsonArrayNode> = (node, ctx) => {
 	const index = core.binarySearch(node.children, ctx.offset, (n, o) => {
@@ -17,7 +18,11 @@ const array: core.Completer<JsonArrayNode> = (node, ctx) => {
 		return ctx.meta.getCompleter(item.value.type)(item.value, ctx)
 	}
 	if (node.typeDef?.kind === 'list') {
-		const completions = getValues(node.typeDef.item, ctx.offset, ctx)
+		const completions = getValues(
+			node.typeDef.item,
+			ctx.offset,
+			createContext(ctx, toJsonNode(node)),
+		)
 		if (ctx.offset < (node.children[node.children.length - 1]?.range.start ?? 0)) {
 			return completions.map(c => ({ ...c, insertText: c.insertText + ',' }))
 		}
@@ -33,7 +38,7 @@ const object = core.completer.record<JsonStringNode, JsonNode, JsonObjectNode>({
 		}
 		const keySet = new Set(exitingKeys.map(n => n.value))
 		return mcdoc.runtime.completer
-			.getFields(record.typeDef, ctx)
+			.getFields(record.typeDef, createContext(ctx, toJsonNode(record)))
 			.filter(({ key }) => !keySet.has(key))
 			.map(({ key, field }) =>
 				core.CompletionItem.create(key, pair?.key ?? range, {
@@ -53,11 +58,14 @@ const object = core.completer.record<JsonStringNode, JsonNode, JsonObjectNode>({
 		}
 		if (pair.key && record.typeDef) {
 			const pairKey = pair.key.value
-			const field = mcdoc.runtime.completer.getFields(record.typeDef, ctx)
+			const field = mcdoc.runtime.completer.getFields(
+				record.typeDef,
+				createContext(ctx, toJsonNode(record)),
+			)
 				.find(({ key }) => key === pairKey)
 				?.field.type
 			if (field) {
-				return getValues(field, range, ctx)
+				return getValues(field, range, createContext(ctx, toJsonNode(record)))
 			}
 		}
 		return []
@@ -67,10 +75,13 @@ const object = core.completer.record<JsonStringNode, JsonNode, JsonObjectNode>({
 const primitive: core.Completer<JsonPrimitiveNode> = (node, ctx) => {
 	const insideRange = core.Range.contains(node, ctx.offset, true)
 	const typeDefValues = node.typeDef
-		? getValues(node.typeDef, insideRange ? node : ctx.offset, ctx)
+		? getValues(
+			node.typeDef,
+			insideRange ? node : ctx.offset,
+			createContext(ctx, toJsonNode(node)),
+		)
 		: []
 	if (node.type === 'json:string' && insideRange) {
-		// Only suggest a quote pair when the location is empty and not already quoted.
 		if (typeDefValues.length === 0 && node.quote === undefined && node.value === '') {
 			return (node.options?.quotes ?? ['"']).map(q =>
 				core.CompletionItem.create(`${q}${q}`, node, {
@@ -79,9 +90,6 @@ const primitive: core.Completer<JsonPrimitiveNode> = (node, ctx) => {
 				})
 			)
 		}
-		// Delegate to core's string completer for the `\N{…}` named-Unicode
-		// escape completion. Works whether or not the json:string has a child
-		// string-parser result.
 		return [...core.completer.string(node, ctx), ...typeDefValues]
 	}
 	return typeDefValues
@@ -90,7 +98,7 @@ const primitive: core.Completer<JsonPrimitiveNode> = (node, ctx) => {
 function getValues(
 	typeDef: core.DeepReadonly<mcdoc.McdocType>,
 	range: core.RangeLike,
-	ctx: core.CompleterContext,
+	ctx: mcdoc.runtime.completer.McdocCompleterContext<JsonNode>,
 ): core.CompletionItem[] {
 	return mcdoc.runtime.completer.getValues(typeDef, ctx)
 		.map((
@@ -106,6 +114,55 @@ function getValues(
 				sortText,
 			})
 		)
+}
+
+function createContext(
+	ctx: core.CompleterContext,
+	node: JsonNode,
+): mcdoc.runtime.completer.McdocCompleterContext<JsonNode> {
+	return {
+		...ctx,
+		requireCanonical: false,
+		getChildren,
+		node: createRuntimeNode(node),
+	}
+}
+
+function createRuntimeNode(node: JsonNode): mcdoc.runtime.checker.SimplifyValueNode<JsonNode> {
+	const parent = node.parent && JsonNode.is(node.parent) ? node.parent : undefined
+	return {
+		entryNode: {
+			parent: parent ? createRuntimeNode(parent) : undefined,
+			get runtimeKey() {
+				return findRuntimeKey(parent, node)
+			},
+		},
+		node: {
+			originalNode: node,
+			get inferredType() {
+				return inferType(node)
+			},
+		},
+	}
+}
+
+function findRuntimeKey(
+	parent: JsonNode | undefined,
+	node: JsonNode,
+): mcdoc.runtime.checker.RuntimeNode<JsonNode> | undefined {
+	if (parent?.type !== 'json:object') {
+		return undefined
+	}
+	for (const pair of parent.children) {
+		if (pair.value === node && pair.key) {
+			return { originalNode: pair.key, inferredType: inferType(pair.key) }
+		}
+	}
+	return undefined
+}
+
+function toJsonNode(node: unknown): JsonNode {
+	return node as JsonNode
 }
 
 export function register(meta: core.MetaRegistry): void {

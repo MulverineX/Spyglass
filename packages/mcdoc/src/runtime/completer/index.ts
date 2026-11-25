@@ -4,23 +4,27 @@ import type {
 	EnumType,
 	LiteralType,
 	LongType,
+	MappedType,
 	McdocType,
 	NumericType,
 	StringType,
 	StructTypePairField,
 } from '../../type/index.js'
 import { handleAttributes, shouldKeepAccordingToAttributeFilters } from '../attribute/index.js'
-import type { SimplifiedMcdocType } from '../checker/index.js'
+import type { McdocTypeContext, SimplifiedMcdocType, SimplifyValueNode } from '../checker/index.js'
+import { simplifyMapped } from '../checker/index.js'
 
 export type SimpleCompletionField = { key: string; field: core.DeepReadonly<StructTypePairField> }
 
-export interface McdocCompleterContext extends core.CompleterContext {
-	requireCanonical?: boolean
+export interface McdocCompleterContext<T = unknown>
+	extends core.CompleterContext, McdocTypeContext<T>
+{
+	node: SimplifyValueNode<T>
 }
 
-export function getFields(
+export function getFields<T>(
 	typeDef: core.DeepReadonly<SimplifiedMcdocType>,
-	ctx: McdocCompleterContext,
+	ctx: McdocCompleterContext<T>,
 ): SimpleCompletionField[] {
 	switch (typeDef.kind) {
 		case 'union':
@@ -73,9 +77,9 @@ export type SimpleCompletionValue = {
 }
 
 // TODO: only accept SimplifiedMcdocType here
-export function getValues(
+export function getValues<T>(
 	typeDef: core.DeepReadonly<McdocType>,
-	ctx: McdocCompleterContext,
+	ctx: McdocCompleterContext<T>,
 ): SimpleCompletionValue[] {
 	if (
 		typeDef.kind === 'string'
@@ -97,7 +101,10 @@ export function getValues(
 			}
 			return [...allValues.values()]
 		case 'mapped':
-			return getValues(typeDef.child as McdocType, ctx)
+			return getValues(
+				simplifyMapped(typeDef as unknown as MappedType, { ctx, node: ctx.node }).typeDef,
+				ctx,
+			)
 		case 'reference':
 			// TODO: de-duplicate this logic from the runtime simplifier
 			if (!typeDef.path) {
@@ -141,9 +148,9 @@ export function getValues(
 	}
 }
 
-function getStringCompletions(
+function getStringCompletions<T>(
 	typeDef: core.DeepReadonly<StringType | EnumType | LiteralType>,
-	ctx: McdocCompleterContext,
+	ctx: McdocCompleterContext<T>,
 ) {
 	const ans: SimpleCompletionValue[] = []
 	handleAttributes(typeDef.attributes, ctx, (handler, config) => {
@@ -170,9 +177,9 @@ function getStringCompletions(
 	return ans
 }
 
-function getNumericCompletions(
+function getNumericCompletions<T>(
 	typeDef: core.DeepReadonly<NumericType | LongType>,
-	ctx: McdocCompleterContext,
+	ctx: McdocCompleterContext<T>,
 ) {
 	const ans: SimpleCompletionValue[] = []
 	handleAttributes(typeDef.attributes, ctx, (handler, config) => {

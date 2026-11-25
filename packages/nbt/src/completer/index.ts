@@ -1,10 +1,11 @@
 import * as core from '@spyglassmc/core'
 import * as mcdoc from '@spyglassmc/mcdoc'
+import { getChildren, inferType } from '../checker/index.js'
 import {
 	type NbtBoolFunctionNode,
 	type NbtCollectionNode,
 	type NbtCompoundNode,
-	type NbtNode,
+	NbtNode,
 	type NbtPathKeyNode,
 	type NbtPathNode,
 	type NbtPrimitiveNode,
@@ -22,10 +23,11 @@ const collection: core.Completer<NbtCollectionNode> = (node, ctx) => {
 		return ctx.meta.getCompleter(item.value.type)(item.value, ctx)
 	}
 	if (node.typeDef?.kind === 'list') {
-		const completions = getValues(node.typeDef.item, ctx.offset, {
-			...ctx,
-			requireCanonical: node.requireCanonical,
-		})
+		const completions = getValues(
+			node.typeDef.item,
+			ctx.offset,
+			createContext(ctx, toNbtNode(node)),
+		)
 		if (ctx.offset < (node.children[node.children.length - 1]?.range.start ?? 0)) {
 			return completions.map(c => ({ ...c, insertText: c.insertText + ',' }))
 		}
@@ -41,7 +43,7 @@ const compound = core.completer.record<NbtStringNode, NbtNode, NbtCompoundNode>(
 		}
 		const keySet = new Set(exitingKeys.map(n => n.value))
 		return mcdoc.runtime.completer
-			.getFields(record.typeDef, { ...ctx, requireCanonical: record.requireCanonical })
+			.getFields(record.typeDef, createContext(ctx, toNbtNode(record)))
 			.filter(({ key }) => !keySet.has(key))
 			.map(({ key, field }) =>
 				core.CompletionItem.create(key, pair?.key ?? range, {
@@ -62,14 +64,11 @@ const compound = core.completer.record<NbtStringNode, NbtNode, NbtCompoundNode>(
 		if (pair.key && record.typeDef) {
 			const pairKey = pair.key.value
 			const field = mcdoc.runtime.completer
-				.getFields(record.typeDef, ctx)
+				.getFields(record.typeDef, createContext(ctx, toNbtNode(record)))
 				.find(({ key }) => key === pairKey)
 				?.field.type
 			if (field) {
-				return getValues(field, range, {
-					...ctx,
-					requireCanonical: record.requireCanonical,
-				})
+				return getValues(field, range, createContext(ctx, toNbtNode(record)))
 			}
 		}
 		return []
@@ -97,10 +96,12 @@ const primitive: core.Completer<NbtPrimitiveNode> = (node, ctx) => {
 	}
 
 	const typeDefValues = node.typeDef
-		? getValues(node.typeDef, insideRange ? node : ctx.offset, {
-			...ctx,
-			requireCanonical: node.requireCanonical,
-		}, isString ? node.quote : undefined)
+		? getValues(
+			node.typeDef,
+			insideRange ? node : ctx.offset,
+			createContext(ctx, toNbtNode(node)),
+			isString ? node.quote : undefined,
+		)
 		: []
 
 	if (isString && insideRange) {
@@ -139,7 +140,7 @@ const path: core.Completer<NbtPathNode> = (node, ctx) => {
 	if (!node.endTypeDef) {
 		return []
 	}
-	return getPathKeys(node.endTypeDef, ctx.offset, undefined, ctx)
+	return getPathKeys(node.endTypeDef, ctx.offset, undefined, ctx, toNbtNode(node))
 }
 
 const pathKey: core.Completer<NbtPathKeyNode> = (node, ctx) => {
@@ -150,7 +151,7 @@ const pathKey: core.Completer<NbtPathKeyNode> = (node, ctx) => {
 	if (child.children?.length) {
 		return core.completer.dispatch(child.children[0], ctx)
 	}
-	return getPathKeys(node.typeDef, node, child.quote, ctx)
+	return getPathKeys(node.typeDef, node, child.quote, ctx, toNbtNode(node))
 }
 
 function getPathKeys(
@@ -158,9 +159,10 @@ function getPathKeys(
 	range: core.RangeLike,
 	quote: core.Quote | undefined,
 	ctx: core.CompleterContext,
+	node: NbtNode,
 ) {
 	return mcdoc.runtime.completer
-		.getFields(typeDef, { ...ctx, requireCanonical: true })
+		.getFields(typeDef, createContext(ctx, node, true))
 		.map(({ key, field }) =>
 			core.CompletionItem.create(key, range, {
 				kind: core.CompletionKind.Field,
@@ -177,7 +179,7 @@ function getPathKeys(
 function getValues(
 	typeDef: core.DeepReadonly<mcdoc.McdocType>,
 	range: core.RangeLike,
-	ctx: mcdoc.runtime.completer.McdocCompleterContext,
+	ctx: mcdoc.runtime.completer.McdocCompleterContext<NbtNode>,
 	quote?: core.Quote,
 ): core.CompletionItem[] {
 	return mcdoc.runtime.completer.getValues(typeDef, ctx)
@@ -241,4 +243,54 @@ export function register(meta: core.MetaRegistry): void {
 
 	meta.registerCompleter('nbt:path', path)
 	meta.registerCompleter('nbt:path/key', pathKey)
+}
+
+function createContext(
+	ctx: core.CompleterContext,
+	node: NbtNode,
+	requireCanonical = false,
+): mcdoc.runtime.completer.McdocCompleterContext<NbtNode> {
+	return {
+		...ctx,
+		requireCanonical: requireCanonical || node.requireCanonical || false,
+		getChildren,
+		node: createRuntimeNode(node),
+	}
+}
+
+function createRuntimeNode(node: NbtNode): mcdoc.runtime.checker.SimplifyValueNode<NbtNode> {
+	const parent = node.parent && NbtNode.is(node.parent) ? node.parent : undefined
+	return {
+		entryNode: {
+			parent: parent ? createRuntimeNode(parent) : undefined,
+			get runtimeKey() {
+				return findRuntimeKey(parent, node)
+			},
+		},
+		node: {
+			originalNode: node,
+			get inferredType(): mcdoc.runtime.checker.SimplifiedMcdocTypeNoUnion {
+				return NbtNode.is(node) ? inferType(node) : { kind: 'any' }
+			},
+		},
+	}
+}
+
+function findRuntimeKey(
+	parent: NbtNode | undefined,
+	node: NbtNode,
+): mcdoc.runtime.checker.RuntimeNode<NbtNode> | undefined {
+	if (parent?.type !== 'nbt:compound') {
+		return undefined
+	}
+	for (const pair of parent.children) {
+		if (pair.value === node && pair.key) {
+			return { originalNode: pair.key, inferredType: inferType(pair.key) }
+		}
+	}
+	return undefined
+}
+
+function toNbtNode(node: unknown): NbtNode {
+	return node as NbtNode
 }

@@ -56,22 +56,7 @@ export function index(
 					}
 					return undefined
 				},
-				getChildren: node => {
-					if (node.type === 'json:array') {
-						return node.children.filter(n => n.value).map(
-							n => [{ originalNode: n.value!, inferredType: inferType(n.value!) }],
-						)
-					}
-					if (node.type === 'json:object') {
-						return node.children.filter(kvp => kvp.key).map(kvp => ({
-							key: { originalNode: kvp.key!, inferredType: inferType(kvp.key!) },
-							possibleValues: kvp.value
-								? [{ originalNode: kvp.value, inferredType: inferType(kvp.value) }]
-								: [],
-						}))
-					}
-					return []
-				},
+				getChildren,
 				reportError: err => {
 					if (err.kind === 'duplicate_key' && options?.discardDuplicateKeyErrors) {
 						return
@@ -128,7 +113,24 @@ export function index(
 	}
 }
 
-function inferType(node: JsonNode): mcdoc.runtime.checker.SimplifiedMcdocTypeNoUnion {
+export const getChildren: mcdoc.runtime.checker.ChildrenGetter<JsonNode> = node => {
+	if (node.type === 'json:array') {
+		return node.children.filter(n => n.value).map(
+			n => [{ originalNode: n.value!, inferredType: inferType(n.value!) }],
+		)
+	}
+	if (node.type === 'json:object') {
+		return node.children.filter(kvp => kvp.key).map(kvp => ({
+			key: { originalNode: kvp.key!, inferredType: inferType(kvp.key!) },
+			possibleValues: kvp.value
+				? [{ originalNode: kvp.value, inferredType: inferType(kvp.value) }]
+				: [],
+		}))
+	}
+	return []
+}
+
+export function inferType(node: JsonNode): mcdoc.runtime.checker.SimplifiedMcdocTypeNoUnion {
 	switch (node.type) {
 		case 'json:boolean':
 			return { kind: 'literal', value: { kind: 'boolean', value: node.value! } }

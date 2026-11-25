@@ -34,7 +34,13 @@ import type {
 } from '../../type/index.js'
 import { McdocType, NumericRange } from '../../type/index.js'
 import { handleAttributes, shouldKeepAccordingToAttributeFilters } from '../attribute/index.js'
-import type { RuntimeNode, RuntimePair, RuntimeUnion, TypeConverter } from './context.js'
+import type {
+	McdocTypeContext,
+	RuntimeNode,
+	RuntimePair,
+	RuntimeUnion,
+	TypeConverter,
+} from './context.js'
 import { McdocCheckerContext } from './context.js'
 import type { ErrorCondensingDefinition, McdocRuntimeError } from './error.js'
 import { condenseAndPropagate } from './error.js'
@@ -827,7 +833,7 @@ export interface SimplifyValueNode<T> {
 }
 export interface SimplifyContext<T> {
 	node: SimplifyValueNode<T>
-	ctx: McdocCheckerContext<T>
+	ctx: McdocTypeContext<T>
 	isMember?: boolean
 	typeArgs?: SimplifiedMcdocType[]
 	typeMapping?: { [path: string]: SimplifiedMcdocType }
@@ -1354,7 +1360,7 @@ function simplifyTemplate<T>(
 	return simplify(typeDef.child, { ...context, typeArgs: [], typeMapping: mapping })
 }
 
-function simplifyMapped<T>(
+export function simplifyMapped<T>(
 	typeDef: MappedType,
 	context: SimplifyContext<T>,
 ): SimplifyResult<SimplifiedMcdocType> {

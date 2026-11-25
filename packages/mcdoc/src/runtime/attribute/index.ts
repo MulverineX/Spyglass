@@ -2,7 +2,6 @@ import * as core from '@spyglassmc/core'
 import type { Attribute, McdocType, StructTypePairField, UnionType } from '../../type/index.js'
 import type {
 	McdocCheckerContext,
-	McdocTypeContext,
 	SimplifiedMcdocType,
 	SimplifiedMcdocTypeNoUnion,
 } from '../checker/index.js'
@@ -20,12 +19,12 @@ export interface McdocAttribute<C = unknown> {
 	mapType?: <T>(
 		config: C,
 		typeDef: SimplifiedMcdocType,
-		ctx: McdocTypeContext<T>,
+		ctx: McdocCheckerContext<T>,
 	) => SimplifiedMcdocType
 	mapField?: <T>(
 		config: C,
 		field: StructTypePairField,
-		ctx: McdocTypeContext<T>,
+		ctx: McdocCheckerContext<T>,
 	) => StructTypePairField
 	filterElement?: (config: C, ctx: core.ContextBase) => boolean
 	stringParser?: <T>(
@@ -38,14 +37,14 @@ export interface McdocAttribute<C = unknown> {
 		inferred: Exclude<McdocType, UnionType>,
 		ctx: McdocCheckerContext<T>,
 	) => core.SyncChecker<core.AstNode> | undefined
-	stringMocker?: <T>(
+	stringMocker?: (
 		config: C,
 		typeDef: core.DeepReadonly<SimplifiedMcdocTypeNoUnion>,
-		ctx: McdocCompleterContext<T>,
+		ctx: McdocCompleterContext,
 	) => core.AstNode | undefined
-	numericCompleter?: <T>(
+	numericCompleter?: (
 		config: C,
-		ctx: McdocCompleterContext<T>,
+		ctx: McdocCompleterContext,
 	) => core.CompletionItem[]
 }
 

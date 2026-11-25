@@ -164,7 +164,31 @@ export function typeDefinition(
 					}
 					return undefined
 				},
-				getChildren,
+				getChildren: node => {
+					const { type } = node
+					if (
+						type === 'nbt:list' || type === 'nbt:byte_array'
+						|| type === 'nbt:int_array' || type === 'nbt:long_array'
+					) {
+						return node.children.filter(n => n.value).map(
+							n => [{ originalNode: n.value!, inferredType: inferType(n.value!) }],
+						)
+					}
+					if (type === 'nbt:uuid_function') {
+						return node.intArray.children.filter(n => n.value).map(
+							n => [{ originalNode: n.value!, inferredType: inferType(n.value!) }],
+						)
+					}
+					if (type === 'nbt:compound') {
+						return node.children.filter(kvp => kvp.key).map(kvp => ({
+							key: { originalNode: kvp.key!, inferredType: inferType(kvp.key!) },
+							possibleValues: kvp.value
+								? [{ originalNode: kvp.value, inferredType: inferType(kvp.value) }]
+								: [],
+						}))
+					}
+					return []
+				},
 				reportError: (error) => {
 					if (options.isPredicate && error.kind === 'invalid_collection_length') {
 						return
@@ -244,36 +268,7 @@ export function typeDefinition(
 	}
 }
 
-/**
- * Enumerates the children of an NBT node, e.g. to resolve indexed types.
- */
-export const getChildren: mcdoc.runtime.checker.ChildrenGetter<NbtNode> = node => {
-	const { type } = node
-	if (
-		type === 'nbt:list' || type === 'nbt:byte_array'
-		|| type === 'nbt:int_array' || type === 'nbt:long_array'
-	) {
-		return node.children.filter(n => n.value).map(
-			n => [{ originalNode: n.value!, inferredType: inferType(n.value!) }],
-		)
-	}
-	if (type === 'nbt:uuid_function') {
-		return node.intArray.children.filter(n => n.value).map(
-			n => [{ originalNode: n.value!, inferredType: inferType(n.value!) }],
-		)
-	}
-	if (type === 'nbt:compound') {
-		return node.children.filter(kvp => kvp.key).map(kvp => ({
-			key: { originalNode: kvp.key!, inferredType: inferType(kvp.key!) },
-			possibleValues: kvp.value
-				? [{ originalNode: kvp.value, inferredType: inferType(kvp.value) }]
-				: [],
-		}))
-	}
-	return []
-}
-
-export function inferType(node: NbtNode): SimplifiedMcdocTypeNoUnion {
+function inferType(node: NbtNode): SimplifiedMcdocTypeNoUnion {
 	switch (node.type) {
 		case 'nbt:byte':
 			return { kind: 'literal', value: { kind: 'byte', value: node.value } }

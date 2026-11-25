@@ -38,14 +38,11 @@ export type ChildrenGetter<T> = (
 
 export type ErrorReporter<T> = (error: McdocRuntimeError<T>) => void
 
-export interface McdocTypeContext<T> extends core.ProcessorContext {
-	requireCanonical: boolean
-	getChildren: ChildrenGetter<T>
-}
-
-export interface McdocCheckerContext<T> extends core.CheckerContext, McdocTypeContext<T> {
+export interface McdocCheckerContext<T> extends core.CheckerContext {
 	allowMissingKeys: boolean
+	requireCanonical: boolean
 	tryConvertTo: TypeConverter<T>
+	getChildren: ChildrenGetter<T>
 	reportError: ErrorReporter<T>
 	attachTypeInfo?: TypeInfoAttacher<T>
 	nodeAttacher?: NodeAttacher<T>

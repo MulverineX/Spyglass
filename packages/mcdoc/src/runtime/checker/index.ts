@@ -34,13 +34,7 @@ import type {
 } from '../../type/index.js'
 import { McdocType, NumericRange } from '../../type/index.js'
 import { handleAttributes, shouldKeepAccordingToAttributeFilters } from '../attribute/index.js'
-import type {
-	McdocTypeContext,
-	RuntimeNode,
-	RuntimePair,
-	RuntimeUnion,
-	TypeConverter,
-} from './context.js'
+import type { RuntimeNode, RuntimePair, RuntimeUnion, TypeConverter } from './context.js'
 import { McdocCheckerContext } from './context.js'
 import type { ErrorCondensingDefinition, McdocRuntimeError } from './error.js'
 import { condenseAndPropagate } from './error.js'
@@ -833,10 +827,12 @@ export interface SimplifyValueNode<T> {
 }
 export interface SimplifyContext<T> {
 	node: SimplifyValueNode<T>
-	ctx: McdocTypeContext<T>
+	ctx: McdocCheckerContext<T>
 	isMember?: boolean
 	typeArgs?: SimplifiedMcdocType[]
 	typeMapping?: { [path: string]: SimplifiedMcdocType }
+	createdMappedTypes?: MappedType[]
+	skipMappedTypeResolve?: boolean
 }
 export interface SimplifyResult<T extends SimplifiedMcdocType> {
 	typeDef: T
@@ -865,32 +861,60 @@ export function simplify<T>(
 		})
 		return result
 	}
+	const createdMappedTypes: MappedType[] = []
+	const ctx: SimplifyContext<T> = { ...context, createdMappedTypes }
+	let result: SimplifyResult<SimplifiedMcdocType>
 	switch (typeDef.kind) {
 		case 'reference':
-			return wrap(simplifyReference(typeDef, context))
+			result = wrap(simplifyReference(typeDef, ctx))
+			break
 		case 'dispatcher':
-			return wrap(simplifyDispatcher(typeDef, context))
+			result = wrap(simplifyDispatcher(typeDef, ctx))
+			break
 		case 'indexed':
-			return wrap(simplifyIndexed(typeDef, context))
+			result = wrap(simplifyIndexed(typeDef, ctx))
+			break
 		case 'union':
-			return wrap(simplifyUnion(typeDef, context))
+			result = wrap(simplifyUnion(typeDef, ctx))
+			break
 		case 'struct':
-			return wrap(simplifyStruct(typeDef, context))
+			result = wrap(simplifyStruct(typeDef, ctx))
+			break
 		case 'list':
-			return wrap(simplifyList(typeDef, context))
+			result = wrap(simplifyList(typeDef, ctx))
+			break
 		case 'tuple':
-			return wrap(simplifyTuple(typeDef, context))
+			result = wrap(simplifyTuple(typeDef, ctx))
+			break
 		case 'enum':
-			return wrap(simplifyEnum(typeDef, context))
+			result = wrap(simplifyEnum(typeDef, ctx))
+			break
 		case 'concrete':
-			return wrap(simplifyConcrete(typeDef, context))
+			result = wrap(simplifyConcrete(typeDef, ctx))
+			break
 		case 'template':
-			return wrap(simplifyTemplate(typeDef, context))
+			result = wrap(simplifyTemplate(typeDef, ctx))
+			break
 		case 'mapped':
-			return wrap(simplifyMapped(typeDef, context))
+			result = wrap(simplifyMapped(typeDef, ctx))
+			break
 		default:
-			return wrap({ typeDef })
+			result = wrap({ typeDef })
+			break
 	}
+	if (!context.skipMappedTypeResolve && createdMappedTypes.length > 0) {
+		const end = createdMappedTypes.length
+		for (let i = 0; i < end; i++) {
+			simplifyMapped(createdMappedTypes[i], {
+				...ctx,
+				node: {
+					entryNode: { parent: context.node, runtimeKey: undefined },
+					node: context.node.node,
+				},
+			})
+		}
+	}
+	return result
 }
 
 function simplifyReference<T>(
@@ -1190,6 +1214,16 @@ function simplifyUnion<T>(
 	return { typeDef: { kind: 'union', members }, dynamicData }
 }
 
+function createMappedType<T>(child: McdocType, context: SimplifyContext<T>): MappedType {
+	const mapped: MappedType = {
+		kind: 'mapped',
+		child,
+		mapping: context.typeMapping!,
+	}
+	context.createdMappedTypes?.push(mapped)
+	return mapped
+}
+
 function simplifyStruct<T>(
 	typeDef: StructType,
 	context: SimplifyContext<T>,
@@ -1243,11 +1277,7 @@ function simplifyStruct<T>(
 			if (context.typeMapping) {
 				mappedField = {
 					...field,
-					type: {
-						kind: 'mapped',
-						child: field.type,
-						mapping: context.typeMapping,
-					} satisfies McdocType,
+					type: createMappedType(field.type, context),
 				}
 				// Don't cache mapped field data
 				// TODO find a better way to handle mapped types with caching
@@ -1286,7 +1316,7 @@ function simplifyList<T>(typeDef: ListType, context: SimplifyContext<T>): Simpli
 	return {
 		typeDef: {
 			...typeDef,
-			item: { kind: 'mapped', child: typeDef.item, mapping: context.typeMapping },
+			item: createMappedType(typeDef.item, context),
 		},
 		// Don't cache mapped field data
 		// TODO find a better way to handle mapped types with caching
@@ -1304,11 +1334,7 @@ function simplifyTuple<T>(
 	return {
 		typeDef: {
 			...typeDef,
-			items: typeDef.items.map(item => ({
-				kind: 'mapped',
-				child: item,
-				mapping: context.typeMapping!,
-			})),
+			items: typeDef.items.map(item => createMappedType(item, context)),
 		},
 		// Don't cache mapped field data
 		// TODO find a better way to handle mapped types with caching
@@ -1360,7 +1386,7 @@ function simplifyTemplate<T>(
 	return simplify(typeDef.child, { ...context, typeArgs: [], typeMapping: mapping })
 }
 
-export function simplifyMapped<T>(
+function simplifyMapped<T>(
 	typeDef: MappedType,
 	context: SimplifyContext<T>,
 ): SimplifyResult<SimplifiedMcdocType> {
@@ -1377,7 +1403,12 @@ export function simplifyMapped<T>(
 			return [path, ans.typeDef]
 		}),
 	)
-	const ans = simplify(typeDef.child, { ...context, typeMapping: simplifiedMapping })
+	const ans = simplify(typeDef.child, {
+		...context,
+		typeMapping: simplifiedMapping,
+		skipMappedTypeResolve: true,
+	})
+	typeDef.resolved = ans.typeDef
 	return { typeDef: ans.typeDef, dynamicData: dynamicData || ans.dynamicData }
 }
 
